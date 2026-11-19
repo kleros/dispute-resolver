@@ -5,7 +5,7 @@ export { createQueryClient } from "./queryClient";
 export { queryKeys } from "./queryKeys";
 export { foundLookup, fromOutcome, metaEvidenceSection, noRpcError } from "./sectionData";
 export { useCourts, useOngoing, useOngoingTitle } from "./ongoingHooks";
-export { useArbitrationCost, useIsContractAccount } from "./accountHooks";
+export { useArbitrationCost, useCannotReceivePayout, useIsContractAccount } from "./accountHooks";
 export { useChainClockOffset } from "./chainTime";
 export { useCase } from "./useCase";
 export { useCaseRefresh } from "./useCaseRefresh";

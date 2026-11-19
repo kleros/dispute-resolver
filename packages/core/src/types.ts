@@ -141,3 +141,4 @@ export type * from "./disputes/types";
 export type * from "./appeals/types";
 export type * from "./create/types";
 export type * from "./writes/types";
+export type * from "./accounts/types";

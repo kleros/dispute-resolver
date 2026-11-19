@@ -27,7 +27,7 @@ import userEvent from "@testing-library/user-event";
 import { writeContract } from "@wagmi/core";
 import { useState } from "react";
 import { formatEther, maxUint256 } from "viem";
-import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi, type Mock } from "vitest";
 import type { CaseDispute, CaseWriteContext, CoreDeps, SectionData, WriteReceipt } from "../../data";
 import {
   TEST_ARBITRABLE,
@@ -41,6 +41,7 @@ import {
   testFoundLookup,
   testOkMetaEvidence,
   testWriteContext,
+  type RpcHandler,
 } from "../../test/data";
 import { renderWithProviders } from "../../test/shell";
 import { hasVisibleText } from "../../ui";
@@ -320,7 +321,7 @@ async function sentCallsAfter(executions = 1): Promise<WriteCall[]> {
 }
 
 /** Renders the section over successive reads of its panel; "Next read" moves to the next one, as a refresh would. */
-async function renderReads(reads: readonly AppealPanel[], connected?: TestWallet) {
+async function renderReads(reads: readonly AppealPanel[], connected?: TestWallet, deps?: CoreDeps) {
   const wallet = connected ?? (await createConnectedTestWallet());
   function Changing() {
     const [read, setRead] = useState(0);
@@ -338,7 +339,7 @@ async function renderReads(reads: readonly AppealPanel[], connected?: TestWallet
       </>
     );
   }
-  return renderWithProviders(<Changing />, { path: "/1", wallet });
+  return renderWithProviders(<Changing />, { path: "/1", wallet, deps });
 }
 
 async function nextRead(user: ReturnType<typeof userEvent.setup>): Promise<void> {
@@ -2288,6 +2289,192 @@ describe("AppealSection: withdraw", () => {
       expect(container).toHaveTextContent(NOTHING);
     });
     expect(container).not.toHaveTextContent(/You withdrew/);
+  });
+});
+
+describe("AppealSection: warning for an account a low-gas transfer cannot reach", () => {
+  const WARNING_BODY =
+    "Refunds and rewards may not reach this account because of its smart-wallet code. Regular accounts receive them. If your wallet can switch this account back to a regular account, do that before you withdraw.";
+  const FAQ_URL = "https://docs.kleros.io/welcome/faq#can-i-use-a-smart-contract-account-to-stake-in-the-court";
+  const DELEGATION = "0xef01007702cb554e6bfb442cb743a7df23154544a7176c";
+  const WITHDRAWN: AppealPanel = { kind: "withdraw", state: { status: "nothing" }, noun: "answer" };
+  const SINGLE_WITHDRAW: WithdrawState = {
+    status: "available",
+    beneficiary: TEST_WALLET_ADDRESS,
+    total: ETH / 4n,
+    items: [{ dialect: "idr-v2", ruling: 1n, amount: ETH / 4n }],
+  };
+
+  /** The connected account's code, and the payout probe's answer for it. */
+  function accountRpc(code: string, probe: () => unknown = () => "0x"): Mock<RpcHandler> {
+    return vi.fn<RpcHandler>(({ method }) => {
+      if (method === "eth_getCode") return code;
+      if (method === "eth_call") return probe();
+      throw new Error(`unexpected ${method}`);
+    });
+  }
+
+  const cannotReceive = () =>
+    accountRpc(DELEGATION, () => {
+      throw Object.assign(new Error("execution reverted"), { code: 3 });
+    });
+
+  const notFlagged: readonly (readonly [string, () => Mock<RpcHandler>, string])[] = [
+    ["a delegated account that receives", () => accountRpc(DELEGATION), "eth_call"],
+    [
+      "a delegated account whose check could not tell",
+      () =>
+        accountRpc(DELEGATION, () => {
+          throw Object.assign(new Error("invalid argument 2: too many arguments, want at most 2"), { code: -32602 });
+        }),
+      "eth_call",
+    ],
+    ["an account without code", () => accountRpc("0x"), "eth_getCode"],
+    ["a contract wallet", () => accountRpc("0x6080604052"), "eth_getCode"],
+  ];
+
+  /** Waits for the account's last read, `method`, and for its answer to reach the section. */
+  async function readsSettled(rpc: Mock<RpcHandler>, method: string): Promise<void> {
+    await waitFor(() => {
+      expect(rpc).toHaveBeenCalledWith(expect.objectContaining({ method }));
+    });
+    await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+  }
+
+  function warning(): HTMLElement {
+    return screen.getByRole("region", { name: "Payout warning" });
+  }
+
+  function isBefore(first: Element, second: Element): boolean {
+    return (first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+  }
+
+  async function expectWarningAbove(heading: string): Promise<void> {
+    const region = await screen.findByRole("region", { name: "Payout warning" });
+    expect(within(region).getByText("Warning")).toBeInTheDocument();
+    expect(within(region).getByText(WARNING_BODY)).toBeInTheDocument();
+    expect(within(region).getByRole("link", { name: "Learn more" })).toHaveAttribute("href", FAQ_URL);
+    expect(within(region).queryByRole("button")).toBeNull();
+    expect(isBefore(region, screen.getByRole("heading", { name: heading }))).toBe(true);
+  }
+
+  it("opens the section above the Fund cards, with a Learn more link and no way to dismiss it", async () => {
+    await renderSection(caseDispute(crowdfunding()), { deps: createTestDeps({ rpc: cannotReceive() }) });
+    await expectWarningAbove("Appeal the decision");
+  });
+
+  it("opens the Withdraw panel while there is something to withdraw", async () => {
+    await renderSection(caseDispute({ kind: "withdraw", state: AVAILABLE_WITHDRAW, noun: "answer" }), { deps: createTestDeps({ rpc: cannotReceive() }) });
+    await expectWarningAbove("Withdraw crowdfunding rewards and refunds");
+  });
+
+  it("stays beside the withdrawn line once that account withdrew everything, and the line and the toast say the withdrawal was sent", async () => {
+    const user = userEvent.setup();
+    writes.fake = fakeWriteController(TEST_SENT);
+    const deps = createTestDeps({ rpc: cannotReceive() });
+    const { container } = await renderReads([{ kind: "withdraw", state: AVAILABLE_WITHDRAW, noun: "answer" }, WITHDRAWN], undefined, deps);
+    await screen.findByRole("region", { name: "Payout warning" });
+    await user.click(screen.getByRole("button", { name: "Withdraw 0.5 ETH" }));
+    expect(await within(toastRegion()).findByText("Transaction confirmed (2 of 2)")).toBeInTheDocument();
+
+    await nextRead(user);
+
+    expect(await within(container).findByText("Withdrawal of 0.5 ETH sent.")).toBeInTheDocument();
+    expect(within(toastRegion()).getByText("Withdrawals of 0.5 ETH sent.")).toBeInTheDocument();
+    expect(isBefore(warning(), within(container).getByText("Withdrawal of 0.5 ETH sent."))).toBe(true);
+    expect(container).not.toHaveTextContent(/You withdrew|Withdrew/);
+  });
+
+  it("a withdrawal in one transaction says in the line and the toast that it was sent", async () => {
+    const user = userEvent.setup();
+    writes.fake = fakeWriteController(TEST_SENT);
+    const deps = createTestDeps({ rpc: cannotReceive() });
+    const { container } = await renderReads([{ kind: "withdraw", state: SINGLE_WITHDRAW, noun: "answer" }, WITHDRAWN], undefined, deps);
+    await screen.findByRole("region", { name: "Payout warning" });
+    await user.click(screen.getByRole("button", { name: "Withdraw 0.25 ETH" }));
+    expect(await within(toastRegion()).findByText("Transaction confirmed")).toBeInTheDocument();
+
+    await nextRead(user);
+
+    expect(await within(container).findByText("Withdrawal of 0.25 ETH sent.")).toBeInTheDocument();
+    expect(within(toastRegion()).getByText("Withdrawal of 0.25 ETH sent.")).toBeInTheDocument();
+    expect(warning()).toBeInTheDocument();
+  });
+
+  it.each([
+    ["one transaction", SINGLE_WITHDRAW, "Withdraw 0.25 ETH", "Withdrawal of 0.25 ETH sent.", "Withdrawal of 0.25 ETH sent."],
+    ["several transactions", AVAILABLE_WITHDRAW, "Withdraw 0.5 ETH", "Withdrawal of 0.5 ETH sent.", "Withdrawals of 0.5 ETH sent."],
+  ])("a withdrawal in %s pressed before the check finds that the account cannot receive still ends with a toast saying it was sent", async (_case, state, button, line, toast) => {
+    const user = userEvent.setup();
+    const held = heldWriteController([{ phase: "pending" }, { phase: "submitted", hash: TEST_TX_HASH, explorerUrl: null }]);
+    writes.fake = held;
+    let revert: () => void = () => undefined;
+    const verdict = new Promise<never>((_resolve, reject) => {
+      revert = () => {
+        reject(Object.assign(new Error("execution reverted"), { code: 3 }));
+      };
+    });
+    const rpc = accountRpc(DELEGATION, () => verdict);
+    const { container } = await renderReads([{ kind: "withdraw", state, noun: "answer" }, WITHDRAWN], undefined, createTestDeps({ rpc }));
+    await readsSettled(rpc, "eth_call");
+    expect(screen.queryByRole("region", { name: "Payout warning" })).toBeNull();
+    await user.click(screen.getByRole("button", { name: button }));
+    await waitFor(() => {
+      expect(held.executions).toHaveLength(1);
+    });
+
+    revert();
+    await screen.findByRole("region", { name: "Payout warning" });
+    held.release([TEST_MINED]);
+    expect(await within(toastRegion()).findByText(toast)).toBeInTheDocument();
+
+    await nextRead(user);
+
+    expect(await within(container).findByText(line)).toBeInTheDocument();
+    expect(container).not.toHaveTextContent(/You withdrew|Withdrew/);
+  });
+
+  it.each(notFlagged)("is never shown above the Fund cards for %s", async (_case, rpcOf, lastRead) => {
+    const rpc = rpcOf();
+    const deps = createTestDeps({ rpc });
+    await renderSection(caseDispute(crowdfunding()), { deps });
+    await readsSettled(rpc, lastRead);
+    expect(screen.queryByRole("region", { name: "Payout warning" })).toBeNull();
+    expect(screen.queryByText(WARNING_BODY)).toBeNull();
+  });
+
+  it.each(notFlagged)("is never shown in the Withdraw panel for %s", async (_case, rpcOf, lastRead) => {
+    const rpc = rpcOf();
+    await renderSection(caseDispute({ kind: "withdraw", state: AVAILABLE_WITHDRAW, noun: "answer" }), { deps: createTestDeps({ rpc }) });
+    await readsSettled(rpc, lastRead);
+    expect(screen.queryByText(WARNING_BODY)).toBeNull();
+  });
+
+  it.each([
+    ["with nothing to withdraw", caseDispute(WITHDRAWN)],
+    ["for an Escrow V1 appeal", escrowDispute()],
+  ])("is never shown %s, even for an account that cannot receive", async (_case, dispute) => {
+    const rpc = cannotReceive();
+    await renderSection(dispute, { deps: createTestDeps({ rpc }) });
+    await readsSettled(rpc, "eth_call");
+    expect(screen.queryByText(WARNING_BODY)).toBeNull();
+  });
+
+  it.each(notFlagged)("after a withdrawal by %s, the line and the toast keep saying what was withdrawn", async (_case, rpcOf, lastRead) => {
+    const user = userEvent.setup();
+    writes.fake = fakeWriteController(TEST_SENT);
+    const rpc = rpcOf();
+    const { container } = await renderReads([{ kind: "withdraw", state: AVAILABLE_WITHDRAW, noun: "answer" }, WITHDRAWN], undefined, createTestDeps({ rpc }));
+    await readsSettled(rpc, lastRead);
+    await user.click(screen.getByRole("button", { name: "Withdraw 0.5 ETH" }));
+    expect(await within(toastRegion()).findByText("Transaction confirmed (2 of 2)")).toBeInTheDocument();
+
+    await nextRead(user);
+
+    expect(await within(container).findByText("You withdrew 0.5 ETH.")).toBeInTheDocument();
+    expect(within(toastRegion()).getByText("Withdrew 0.5 ETH in total.")).toBeInTheDocument();
+    expect(container).not.toHaveTextContent(/sent\./);
+    expect(screen.queryByText(WARNING_BODY)).toBeNull();
   });
 });
 

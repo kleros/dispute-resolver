@@ -98,7 +98,7 @@ export interface HeldWriteController extends FakeWriteController {
   release(rest: readonly WriteStatus[]): void;
 }
 
-/** As `fakeWriteController`, but each `execute` of `useWrite` plays `before` and then waits for `release`. */
+/** As `fakeWriteController`, but each `execute` of `useWrite`, and each build of a sequence, plays `before` and then waits for `release`. */
 export function heldWriteController(before: readonly WriteStatus[]): HeldWriteController {
   let release: (rest: readonly WriteStatus[]) => void = () => undefined;
   const held = new Promise<readonly WriteStatus[]>((resolve) => {
@@ -107,7 +107,11 @@ export function heldWriteController(before: readonly WriteStatus[]): HeldWriteCo
   return { ...createFakeWriteController(before, [], held), release };
 }
 
-function createFakeWriteController(script: readonly WriteStatus[], buildScripts: readonly (readonly WriteStatus[])[], held: Promise<readonly WriteStatus[]> | undefined): FakeWriteController {
+function createFakeWriteController(
+  script: readonly WriteStatus[],
+  buildScripts: readonly (readonly WriteStatus[])[],
+  held: Promise<readonly WriteStatus[]> | undefined,
+): FakeWriteController {
   const executions: { builds: readonly WriteBuild[]; options: WriteOptions | WriteSequenceOptions }[] = [];
 
   function useWrite(): WriteController {
@@ -159,10 +163,15 @@ function createFakeWriteController(script: readonly WriteStatus[], buildScripts:
         let outcome: WriteOutcome = NOTHING_TO_WITHDRAW;
         let lastMined: Extract<WriteOutcome, { readonly phase: "mined" }> | null = null;
         for (const index of builds.keys()) {
-          outcome = await play(buildScripts[index] ?? script, { pageChainId: writeOptions.pageChainId }, (current) => {
-            setStatus({ index, total, current });
-            attempt.report(current, writeOptions.wording(index), { index, total });
-          });
+          outcome = await play(
+            buildScripts[index] ?? script,
+            { pageChainId: writeOptions.pageChainId },
+            (current) => {
+              setStatus({ index, total, current });
+              attempt.report(current, writeOptions.wording(index), { index, total });
+            },
+            held,
+          );
           if (outcome.phase !== "mined") break;
           lastMined = outcome;
         }
