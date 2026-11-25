@@ -631,7 +631,9 @@ describe("case page states", () => {
     expect(within(header).getByText("Voting")).toBeInTheDocument();
     expect(await screen.findByRole("heading", { level: 2, name: "Dispute 1 title" })).toBeInTheDocument();
     expect(core.loadMetaEvidence).toHaveBeenCalledWith(expect.objectContaining({ disputeId: 1n, arbitrable: TEST_ARBITRABLE }));
-    expect(screen.queryByText("View mode only for this dispute")).not.toBeInTheDocument();
+    for (const title of ["View mode only for this dispute", "Evidence can't be submitted on this interface", "View mode only"]) {
+      expect(screen.queryByText(title)).not.toBeInTheDocument();
+    }
     expect(
       screen.queryByText(
         /^The answer options of this question|^Other interfaces may show different answer options|^The question parameters are malformed|^The meta-evidence API pointed to/,
@@ -687,20 +689,155 @@ describe("case page states", () => {
 });
 
 describe("compatibility banner", () => {
-  it("a view-only dispute shows the 'View mode only' banner", async () => {
-    programReads({ family: GOVERNOR });
-    renderCase("/1/cases/1");
-    expect(await screen.findByText("View mode only for this dispute")).toBeInTheDocument();
-    expect(screen.getByText(/You can't submit evidence or fund appeals on this interface\./)).toBeInTheDocument();
+  const INCOMPATIBLE_TITLE = "View mode only for this dispute";
+  const NO_EVIDENCE_TITLE = "Evidence can't be submitted on this interface";
+  const UNREAD_TITLE = "View mode only";
+  const INCOMPATIBLE_BODY =
+    "The arbitrable contract of this dispute is not compatible with the interface of Dispute Resolver. You can't submit evidence or fund appeals on this interface. You can do these on the arbitrable application, if implemented.";
+  const EVIDENCE_REFUSED = "This arbitrable contract does not accept evidence through the Dispute Resolver.";
+  const NO_EVIDENCE_BODY = `${EVIDENCE_REFUSED} You can submit it on the arbitrable application, if implemented.`;
+  const UNREAD_BODY =
+    "You can't submit evidence or fund appeals on this page. Some of this dispute's data could not be read. Reload the page to try reading it again. If it keeps failing, use the arbitrable application, if it has one.";
+  const LOCAL_ID_UNREAD_BODY = "Some of this dispute's data could not be read.";
+  const IDR_LEGACY = testFamily({
+    family: "idr-legacy",
+    writeFamily: "idr-legacy",
+    capabilities: { localId: "externalIDtoLocalID", evidence: { kind: "local-id" }, appeal: { kind: "none" }, withdraw: { kind: "unsupported" } },
   });
 
-  it("a family that could not be detected is view-only, and the page still renders", async () => {
+  function failLocalIdRead(reason: "reverted" | "rpc-error") {
+    vi.mocked(core.readDisputeDetails).mockImplementation((_context, found) =>
+      Promise.resolve(
+        testDetails(
+          { status: "found", ...found },
+          {
+            appealInfo: found.dispute.period >= 3 ? { ok: true, value: APPEAL_INFO } : null,
+            localId: { kind: "unresolved", reason },
+          },
+        ),
+      ),
+    );
+  }
+
+  /** The banner is visible on load, before any accordion item is opened. */
+  async function visibleBanner(title: string, body: string): Promise<void> {
+    expect(await screen.findByRole("heading", { level: 2, name: title })).toBeVisible();
+    expect(screen.getByText(body)).toBeVisible();
+  }
+
+  it("an arbitrable with no evidence or appeal interface says the dispute is view mode only on this interface", async () => {
+    programReads({ family: VIEW_ONLY });
+    renderCase("/1/cases/1");
+    await visibleBanner(INCOMPATIBLE_TITLE, INCOMPATIBLE_BODY);
+  });
+
+  it("an arbitrable whose contract refused the local-ID call keeps the view-mode banner", async () => {
+    programReads({ period: 3 });
+    failLocalIdRead("reverted");
+    renderCase("/1/cases/1");
+    await visibleBanner(INCOMPATIBLE_TITLE, INCOMPATIBLE_BODY);
+    expect(screen.queryByText(NO_EVIDENCE_TITLE)).not.toBeInTheDocument();
+    expect(screen.queryByText(UNREAD_TITLE)).not.toBeInTheDocument();
+  });
+
+  it.each([0, 3] as const)(
+    "in period %i, an arbitrable that refuses evidence but funds appeals here says only that evidence can't be submitted, as the Evidence item does, and points to the arbitrable application",
+    async (period) => {
+      programReads({ period, family: GOVERNOR });
+      renderCase("/1/cases/1");
+      await visibleBanner(NO_EVIDENCE_TITLE, NO_EVIDENCE_BODY);
+      expect(screen.queryByText(/can't submit evidence or fund appeals/)).not.toBeInTheDocument();
+      expect(screen.queryByText(INCOMPATIBLE_TITLE)).not.toBeInTheDocument();
+      await userEvent.setup().click(accordionButton("Evidence"));
+      await waitFor(() => {
+        expect(accordionBody("Evidence")).toBeVisible();
+      });
+      expect(within(accordionBody("Evidence")).getByText(EVIDENCE_REFUSED)).toBeVisible();
+    },
+  );
+
+  it("a family that could not be detected says the data could not be read, not that the contract is incompatible, and the page still renders", async () => {
     vi.mocked(core.detectFamily).mockRejectedValue(new Error("socket hang up"));
     renderCase("/1/cases/1");
     await settledDispute();
-    expect(screen.getByText("View mode only for this dispute")).toBeInTheDocument();
+    await visibleBanner(UNREAD_TITLE, UNREAD_BODY);
+    expect(screen.queryByText(/not compatible/)).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { level: 1, name: "Dispute #1" })).toBeInTheDocument();
     expect(await screen.findByRole("heading", { level: 2, name: "Dispute 1 title" })).toBeInTheDocument();
+  });
+
+  it("a local ID that could not be read says the data could not be read, in the banner and in Evidence, without a Retry", async () => {
+    failLocalIdRead("rpc-error");
+    renderCase("/1/cases/1");
+    await visibleBanner(UNREAD_TITLE, UNREAD_BODY);
+    await userEvent.setup().click(accordionButton("Evidence"));
+    await waitFor(() => {
+      expect(accordionBody("Evidence")).toBeVisible();
+    });
+    const evidence = accordionBody("Evidence");
+    expect(within(evidence).getByText("Evidence submission unavailable")).toBeVisible();
+    expect(within(evidence).getByText(LOCAL_ID_UNREAD_BODY)).toBeVisible();
+    expect(within(evidence).queryByRole("button", { name: "Retry Evidence submission" })).not.toBeInTheDocument();
+    expect(within(evidence).queryByText(/does not accept evidence/)).not.toBeInTheDocument();
+  });
+
+  it.each([false, true])("in the Execution period, an arbitrable that refuses evidence but funds appeals here shows no banner (ruling executed: %s)", async (ruled) => {
+    programReads({ family: GOVERNOR, lookups: { "1": testFoundLookup({ period: 4, ruled }) } });
+    renderCase("/1/cases/1");
+    await settledDispute();
+    expect(await screen.findByRole("region", { name: "Dispute timeline" })).toBeInTheDocument();
+    for (const title of [INCOMPATIBLE_TITLE, NO_EVIDENCE_TITLE, UNREAD_TITLE]) {
+      expect(screen.queryByRole("heading", { level: 2, name: title })).not.toBeInTheDocument();
+    }
+  });
+
+  it.each([
+    ["an arbitrable with no evidence or appeal interface", VIEW_ONLY, false, () => undefined, INCOMPATIBLE_TITLE, INCOMPATIBLE_BODY],
+    [
+      "an arbitrable whose contract refused the local-ID call",
+      testFamily(),
+      true,
+      () => {
+        failLocalIdRead("reverted");
+      },
+      INCOMPATIBLE_TITLE,
+      INCOMPATIBLE_BODY,
+    ],
+    [
+      "a family that could not be detected",
+      testFamily(),
+      false,
+      () => {
+        vi.mocked(core.detectFamily).mockRejectedValue(new Error("socket hang up"));
+      },
+      UNREAD_TITLE,
+      UNREAD_BODY,
+    ],
+    [
+      "a local ID that could not be read",
+      testFamily(),
+      true,
+      () => {
+        failLocalIdRead("rpc-error");
+      },
+      UNREAD_TITLE,
+      UNREAD_BODY,
+    ],
+  ])("in the Execution period, %s keeps its banner for people who come to withdraw", async (_, family, ruled, fail, title, body) => {
+    programReads({ family, lookups: { "1": testFoundLookup({ period: 4, ruled }) } });
+    fail();
+    renderCase("/1/cases/1");
+    await visibleBanner(title, body);
+  });
+
+  it("an arbitrable that never funds appeals here, with its local ID unread in the appeal period, keeps the funding notice in Appeal", async () => {
+    programReads({ period: 3, family: IDR_LEGACY });
+    failLocalIdRead("rpc-error");
+    renderCase("/1/cases/1");
+    await settledDispute();
+    await visibleBanner(UNREAD_TITLE, UNREAD_BODY);
+    await userEvent.setup().click(accordionButton("Appeal"));
+    expect(await within(accordionBody("Appeal")).findByText("Appeal funding unavailable here")).toBeVisible();
   });
 });
 

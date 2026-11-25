@@ -19,8 +19,15 @@ describe("submitControl", () => {
     expect(submitControl({ ...dispute(0, sectionReady(testWriteContext())), lookup: sectionLoading })).toEqual({ kind: "hidden" });
   });
 
-  it("an unresolved local ID is view-only", () => {
+  it("a local ID the contract refused to give is view-only", () => {
     expect(submitControl(dispute(0, sectionReady(testWriteContext({ localId: { kind: "unresolved", reason: "reverted" } }))))).toEqual({ kind: "view-only" });
+  });
+
+  it("a local ID that could not be read is reported as unread, not as view-only", () => {
+    expect(submitControl(dispute(0, sectionReady(testWriteContext({ localId: { kind: "unresolved", reason: "rpc-error" } }))))).toEqual({
+      kind: "unread",
+      error: { code: "rpc-error", message: "Some of this dispute's data could not be read." },
+    });
   });
 
   it("loading waits for the write context", () => {

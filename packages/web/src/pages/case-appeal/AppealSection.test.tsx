@@ -2165,6 +2165,31 @@ describe("AppealSection: withdraw", () => {
     expect(within(panel).queryByRole("button")).toBeNull();
   });
 
+  it.each([
+    [
+      "a read that failed says to reload, since the panel has no Retry",
+      "rpc-error",
+      "The arbitrable's local dispute ID could not be read.",
+      "The arbitrable's local dispute ID could not be read. Reload the page to try again.",
+    ],
+    [
+      "a read error without a full stop gets one before the reload advice",
+      "rpc-error",
+      'Could not read the withdrawable amount: The contract function "getTotalWithdrawableAmount" reverted with the following reason: Internal error',
+      'Could not read the withdrawable amount: The contract function "getTotalWithdrawableAmount" reverted with the following reason: Internal error. Reload the page to try again.',
+    ],
+    [
+      "a call the contract refused does not say to reload",
+      "reverted",
+      "The arbitrable's local dispute ID could not be read.",
+      "The arbitrable's local dispute ID could not be read.",
+    ],
+  ] as const)("an unreadable withdrawable amount: %s", async (_case, code, message, body) => {
+    const state: WithdrawState = { status: "unavailable", error: { code, message } };
+    const panel = await renderSection(caseDispute({ kind: "withdraw", state, noun: "answer" }));
+    expect(within(panel).getByText(body)).toBeInTheDocument();
+  });
+
   it("with nothing to withdraw before the arbitrator executed the ruling, gives that as one reason", async () => {
     const panel = await renderSection(caseDispute(WITHDRAWN, { period: 4, ruled: false }));
     expect(panel).toHaveTextContent(

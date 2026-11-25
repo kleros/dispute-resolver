@@ -1,6 +1,7 @@
 import { getChain } from "@dispute-resolver/core";
 import { useCallback, type ReactNode } from "react";
 import { ChainNoticeProvider, type ChainNotice } from "../routing";
+import { asSentence } from "../ui";
 import { chainName } from "../wallet";
 import { useToast } from "./ToastProvider";
 import type { ToastInput } from "./types";
@@ -10,12 +11,6 @@ export const NOT_SWITCHED_TITLE = "Network not switched";
 /** The user is often still in the wallet when a notice fires, so it outlasts the default toast; a failure has more to read. */
 const NEUTRAL_NOTICE_MS = 10_000;
 const ERROR_NOTICE_MS = 15_000;
-
-/** A wallet's message may end without a full stop; the toast reads it as a sentence followed by another. */
-export function asSentence(text: string): string {
-  const trimmed = text.trim();
-  return /[.!?]$/.test(trimmed) ? trimmed : `${trimmed}.`;
-}
 
 /**
  * `null` for a declined switch away from an unconfigured wallet chain: the unsupported-network screen says it all. Chain

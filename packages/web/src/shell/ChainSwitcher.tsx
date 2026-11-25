@@ -3,8 +3,8 @@ import { useCallback, useEffect, useId, useRef, type KeyboardEvent, type ReactNo
 import { Link, useLocation } from "react-router";
 import { SWITCHABLE_CHAINS, switchChainSegment, type ResolvedChain } from "../routing";
 import { useNetworkSwitch, useWalletChainId } from "../wallet";
-import { BAR_PILL, ChevronIcon, DROPDOWN_CLOSING_CLASS, DROPDOWN_OPEN_CLASS, useOutsidePress, usePresence } from "../ui";
-import { asSentence, NOT_SWITCHED_TITLE } from "./ChainNoticeToasts";
+import { asSentence, BAR_PILL, ChevronIcon, DROPDOWN_CLOSING_CLASS, DROPDOWN_OPEN_CLASS, useOutsidePress, usePresence } from "../ui";
+import { NOT_SWITCHED_TITLE } from "./ChainNoticeToasts";
 import { CheckIcon } from "./icons";
 import { BAR_FOCUS } from "./layout";
 import { useToast } from "./ToastProvider";

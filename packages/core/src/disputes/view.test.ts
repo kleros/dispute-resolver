@@ -106,13 +106,13 @@ describe("buildDisputeView", () => {
     ["mainnet 150 (unpinned meta-evidence, 2^128 - 1 choices)", 150n, GATEWAY_DOWN, "0x594ec762b59978c97c82bc36ab493ed8b1f1f368", 0n, "General Court", 3],
     ["mainnet 560 (meta-evidence is a PDF, not JSON)", 560n, NOT_JSON, "0xc5e9ddebb09cd64dfacab4011a0d5cedaf7c9bdb", 23n, "Humanity Court", 3],
     ["mainnet 1665 (home-proxy read reverts, max-uint choices)", 1665n, PROXY_REVERTED, "0x412c0617f357e640406ff0b4ee55f547c3692ba7", 24n, "Oracle Court", 15],
-  ])("%s with an unknown family still renders the dispute info and timeline, view-only", async (_, disputeId, metaEvidence, arbitrable, courtId, courtName, votes) => {
+  ])("%s with an unknown family still renders the dispute info and timeline, compatibility unknown", async (_, disputeId, metaEvidence, arbitrable, courtId, courtName, votes) => {
     const { lookup, reads, courts } = await load(MAINNET, 1, disputeId);
     const view = existing(buildDisputeView({ lookup, reads, family: NOT_READ, courts, metaEvidence }));
     expect(view).toMatchObject({
       arbitrable,
       family: NOT_READ,
-      compatibility: "view-only",
+      compatibility: "unknown",
       court: { ok: true, value: { id: courtId, name: courtName } },
       timeline: { ok: true },
       numberOfVotes: { ok: true, value: votes },
@@ -137,13 +137,13 @@ describe("buildDisputeView", () => {
     expect(view.timeline).toEqual(NOT_READ);
   });
 
-  it("details not read degrade the vote count and make a family that needs a local ID view-only, never the view", async () => {
+  it("details not read degrade the vote count and leave the compatibility of a family that needs a local ID unknown, never the view", async () => {
     const { lookup, courts } = await load(MAINNET, 1, 1454n);
     const family = await recordedDetection(1, "0x99489d7bb33539f3d1a401741e56e8f02b9ae0cf");
     const view = existing(buildDisputeView({ lookup, reads: null, family: { ok: true, value: family }, courts, metaEvidence: null }));
     expect(view.numberOfVotes.ok).toBe(false);
     expect(view.timeline.ok).toBe(true);
-    expect(view.compatibility).toBe("view-only");
+    expect(view.compatibility).toBe("unknown");
   });
 
   it("a failed vote count read degrades the vote count only", async () => {
