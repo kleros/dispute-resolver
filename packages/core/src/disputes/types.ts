@@ -111,7 +111,7 @@ export type Decision =
   | { readonly kind: "jury-decision"; readonly court: RulingFact; readonly note: JuryDecisionNote; readonly noun: RulingNoun }
   | { readonly kind: "winner"; readonly winner: RulingFact; readonly court: RulingFact; readonly wonBy: "jury" | "default" | "applied"; readonly noun: RulingNoun };
 
-export type Compatibility = "full" | "view-only";
+export type Compatibility = "full" | "view-only" | "unknown";
 
 export type DisputeView =
   | { readonly exists: false; readonly reason: "not-found" | "no-arbitrator" }

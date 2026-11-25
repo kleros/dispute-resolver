@@ -16,6 +16,7 @@ export { periodColorVar } from "./periodColor";
 export { SectionBoundary } from "./SectionBoundary";
 export { SectionSkeleton } from "./SectionSkeleton";
 export { SectionUnavailable } from "./SectionUnavailable";
+export { asSentence } from "./sentence";
 export { shortenAddress } from "./address";
 export { formatAmount } from "./formatAmount";
 export { formatDuration } from "./duration";

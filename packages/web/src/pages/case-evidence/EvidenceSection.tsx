@@ -9,7 +9,7 @@ import { EvidenceOrderSelect, ORDER_LABELS } from "./EvidenceOrderSelect";
 import { EvidenceTimeline, type Announcement } from "./EvidenceTimeline";
 import { SubmissionFeedbackNotice } from "./SubmissionFeedbackNotice";
 import { SubmitEvidenceModal } from "./SubmitEvidenceModal";
-import { submitControl } from "./submitControl";
+import { EVIDENCE_NOT_ACCEPTED, submitControl } from "./submitControl";
 import { useEvidenceSubmission, type EvidenceDraft } from "./useEvidenceSubmission";
 
 const SECTION = "Evidence";
@@ -134,11 +134,17 @@ function SubmitControlView({ dispute, control, layout }: { readonly dispute: Cas
       return <Button text="Submit New Evidence" className={layout.button} isLoading isDisabled />;
     case "unavailable":
       return <SubmitUnavailable dispute={dispute} error={control.error} layout={layout} />;
+    case "unread":
+      return (
+        <BelowRow layout={layout}>
+          <SectionUnavailable section="Evidence submission" error={control.error} />
+        </BelowRow>
+      );
     case "view-only":
       return (
         <div className={`flex min-w-0 flex-col gap-2 ${layout.control}`}>
           <Button text="Go to Arbitrable Application to Submit Evidence" className={layout.button} isDisabled />
-          <p className={`text-sm text-klerosUIComponentsSecondaryText ${layout.below}`}>This arbitrable contract does not accept evidence through the Dispute Resolver.</p>
+          <p className={`text-sm text-klerosUIComponentsSecondaryText ${layout.below}`}>{EVIDENCE_NOT_ACCEPTED}</p>
         </div>
       );
     case "available":

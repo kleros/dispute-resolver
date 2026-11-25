@@ -30,7 +30,7 @@ const EVENT_PATH = "/ipfs/QmbtSnH8BB3cgDLwtY6aT7fggnzhyEMVHExqsiVPjBxmcz/metaEvi
 const LOCATOR_PATH = "/ipfs/QmPMaPsRbEQ4Z65GqiBnGEqQNnGQBZX2BuMW9AEXqtit9f/metaEvidence.json";
 const NOT_CONTENT_ADDRESSED = "/ipns/k51qzi5uqu5dlvj2baxnqndepeb86cbk3ng7n3i46uzyxzyqj2xjonzllnv0v8";
 const WARNING_TITLE = /^The meta-evidence API pointed to/;
-const BANNER_TITLE = "View mode only for this dispute";
+const BANNER_TITLE = "View mode only";
 const UNAVAILABLE_SECTIONS = ["Dispute details unavailable", "Timeline unavailable", "Decision unavailable"];
 
 const ERC1497_ABI = parseAbi(["event MetaEvidence(uint256 indexed _metaEvidenceID, string _evidence)"]);
@@ -100,7 +100,7 @@ async function boxOf(locator: Locator): Promise<{ readonly top: number; readonly
   return { top: box.y, bottom: box.y + box.height };
 }
 
-test("Gnosis 460 renders the on-chain meta-evidence while the meta-evidence API points elsewhere, with the warning under the record band, above the view-only banner and the decision, and on screen", async ({
+test("Gnosis 460 renders the on-chain meta-evidence while the meta-evidence API points elsewhere, with the warning under the record band, above the compatibility banner and the decision, and on screen", async ({
   context,
   page,
   baseURL,
@@ -114,10 +114,10 @@ test("Gnosis 460 renders the on-chain meta-evidence while the meta-evidence API 
   await expect(warning).toContainText("Ongoing Disputes list");
   await expect(warning).not.toContainText("/ipfs/");
 
-  // The harness answers no eth_getCode, so the family is unavailable after one retry and the dispute is view-only. The
-  // banner comes in between the warning and the decision about a second later, the last section to settle: measure once
-  // it shows.
-  const banner = page.getByText(BANNER_TITLE);
+  // The harness answers no eth_getCode, so the family is unavailable after one retry and the banner says the data could
+  // not be read. The banner comes in between the warning and the decision about a second later, the last section to
+  // settle: measure once it shows.
+  const banner = page.getByText(BANNER_TITLE, { exact: true });
   await expect(banner).toBeVisible({ timeout: 30_000 });
   const band = page.getByRole("region", { name: "Dispute #460" });
   await expect(band.locator('[aria-busy="true"]')).toHaveCount(0);

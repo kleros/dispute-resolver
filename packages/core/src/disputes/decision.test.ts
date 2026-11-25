@@ -221,14 +221,17 @@ describe("deriveCompatibility", () => {
   const IDR_V2 = "0x99489d7bb33539f3d1a401741e56e8f02b9ae0cf";
   const GNOSIS_MODERATE = "0xe04f5791d671d5c4e08ab49b39807087b591ea3e";
   const REVERTED: LocalIdResolution = { kind: "unresolved", reason: "reverted" };
+  const UNREAD_LOCAL_ID: LocalIdResolution = { kind: "unresolved", reason: "rpc-error" };
 
-  it("an unknown family is view-only", () => {
-    expect(deriveCompatibility(undefined, RESOLVED)).toBe("view-only");
+  it("a family that could not be detected leaves compatibility unknown", () => {
+    expect(deriveCompatibility(undefined, RESOLVED)).toBe("unknown");
   });
 
   it.each<[string, number, string, LocalIdResolution, Compatibility]>([
     ["an idr-v2 arbitrable with its local ID resolved is full (mainnet 1454)", 1, IDR_V2, RESOLVED, "full"],
     ["an arbitrable whose local-ID read reverted is view-only", 1, IDR_V2, REVERTED, "view-only"],
+    ["an arbitrable whose local ID could not be read is unknown", 1, IDR_V2, UNREAD_LOCAL_ID, "unknown"],
+    ["an Escrow V1 arbitrable whose transaction ID could not be read is unknown", 1, "0xc25a0b9681abf6f090aed71a8c08fb564b41dab6", UNREAD_LOCAL_ID, "unknown"],
     ["the idr-legacy proxy is full (mainnet 505, 328)", 1, "0x135c573503f70dc290b1d60fe2e7f7eb114febd6", { kind: "local-id", value: 51n }, "full"],
     ["an Escrow V1 arbitrable with its transaction ID is full (mainnet 878)", 1, "0xc25a0b9681abf6f090aed71a8c08fb564b41dab6", { kind: "transaction-id", value: 16n }, "full"],
     [
@@ -238,11 +241,12 @@ describe("deriveCompatibility", () => {
       { kind: "not-applicable" },
       "full",
     ],
-    ["poh.eth needs no local ID, so an unresolved one keeps it full", 1, "0x327a29fce0a6490e4236240be176daa282eccfdf", { kind: "unresolved", reason: "rpc-error" }, "full"],
+    ["poh.eth needs no local ID, so an unresolved one keeps it full", 1, "0x327a29fce0a6490e4236240be176daa282eccfdf", UNREAD_LOCAL_ID, "full"],
     ["the kleros.eth governor is view-only for evidence (mainnet 1672, 535)", 1, "0xe5bcea6f87aaee4a81f64dfdb4d30d400e0e5cf4", { kind: "not-applicable" }, "view-only"],
     ["Proof of Humanity v2 is view-only (mainnet 1674)", 1, "0xbe9834097a4e97689d9b667441acafb456d0480a", { kind: "not-applicable" }, "view-only"],
     ["a registered Reality proxy with its local ID resolved is full (Gnosis Moderate)", 100, GNOSIS_MODERATE, RESOLVED, "full"],
     ["a registered Reality proxy whose local-ID read reverted is view-only (Gnosis Moderate)", 100, GNOSIS_MODERATE, REVERTED, "view-only"],
+    ["a registered Reality proxy whose local ID could not be read is unknown (Gnosis Moderate)", 100, GNOSIS_MODERATE, UNREAD_LOCAL_ID, "unknown"],
   ])("%s", async (_, chainId, address, localId, expected) => {
     expect(deriveCompatibility(await recordedDetection(chainId, address), localId)).toBe(expected);
   });

@@ -94,7 +94,10 @@ export function DisputeSections({ dispute, chain, retries }: DisputeSectionsProp
   };
 
   const { view } = dispute;
-  const viewOnly = view.status === "ready" && view.value.exists && view.value.compatibility === "view-only";
+  const banner =
+    view.status === "ready" && view.value.exists && view.value.compatibility !== "full" ? (
+      <CompatibilityBanner compatibility={view.value.compatibility} family={view.value.family} period={view.value.period} />
+    ) : null;
 
   const items: CaseAccordionItem[] = [
     { title: "Question", body: boundary("question", "Question", rereadMetaEvidence, <QuestionPanel {...props} onRetry={retryMetaEvidence} />) },
@@ -115,7 +118,7 @@ export function DisputeSections({ dispute, chain, retries }: DisputeSectionsProp
       {/* The notices come before the decision: they qualify everything below the band. */}
       {boundary("meta-evidence-source", "Meta-evidence source", rereadMetaEvidence, <MetaEvidenceSourceNotice {...props} />)}
       {boundary("script-details", "Script details notice", rereadMetaEvidence, <ScriptDetailsNotice {...props} />)}
-      {viewOnly ? <CompatibilityBanner /> : null}
+      {banner}
       {boundary("decision", "Decision", rereadAppeal, <DecisionAlert {...props} />)}
       {boundary("summary", "Dispute summary", rereadMetaEvidence, <DisputeSummary {...props} displayRetry={displayRetry} onRetry={retryMetaEvidence} />)}
       {boundary("reality", "Reality notice", rereadMetaEvidence, <RealityNotice {...props} />)}

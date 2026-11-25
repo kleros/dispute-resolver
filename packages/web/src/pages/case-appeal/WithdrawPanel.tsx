@@ -1,8 +1,8 @@
-import { buildWithdrawCalls, type Address, type ChainConfig, type RulingNoun, type WithdrawState } from "@dispute-resolver/core";
+import { buildWithdrawCalls, type Address, type ChainConfig, type RulingNoun, type Unavailable, type WithdrawState } from "@dispute-resolver/core";
 import { Button } from "@kleros/ui-components-library";
 import { useLayoutEffect, useRef, useState } from "react";
 import { useCannotReceivePayout } from "../../data";
-import { Notice, formatAmount } from "../../ui";
+import { Notice, asSentence, formatAmount } from "../../ui";
 import { PayoutWarningNotice, useWallet, useWriteSequence, type WalletState, type WriteSequenceStatus, type WriteWording } from "../../wallet";
 import {
   WITHDRAW_HEADING,
@@ -53,11 +53,16 @@ function withdrawalWording(amounts: readonly string[], total: string, index: num
   return single(amount);
 }
 
+/** The panel offers no Retry, so a failed read says how to read again. */
+function withdrawUnavailableBody(error: Unavailable): string {
+  return error.code === "rpc-error" ? `${asSentence(error.message)} Reload the page to try again.` : error.message;
+}
+
 function WithdrawExplanation({ state, noun, executed }: { readonly state: WithdrawState; readonly noun: RulingNoun; readonly executed: boolean }) {
   if (state.status === "nothing") return <p className={BODY_TEXT_CLASS}>{withdrawNothing(noun, executed)}</p>;
   let note = null;
   if (state.status === "no-account") note = <Notice variant="info" title="Wallet required" body={WITHDRAW_NO_ACCOUNT} />;
-  else if (state.status === "unavailable") note = <Notice variant="warning" title="Withdrawable amount unavailable" body={state.error.message} />;
+  else if (state.status === "unavailable") note = <Notice variant="warning" title="Withdrawable amount unavailable" body={withdrawUnavailableBody(state.error)} />;
   else if (state.items.length > 1) {
     note = (
       <p className="text-sm">
