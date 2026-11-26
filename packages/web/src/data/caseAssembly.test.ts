@@ -2,6 +2,7 @@ import {
   REGISTRY,
   describeAppealRules,
   type AppealInfo,
+  type AppealPanel,
   type DisputeReads,
   type ExecutedRuling,
   type FamilyDetection,
@@ -14,7 +15,7 @@ import {
 } from "@dispute-resolver/core";
 import { describe, expect, it } from "vitest";
 import { sectionLoading, sectionReady, sectionUnavailable, testCourt, testDetails, testFamily, testFoundLookup, testOkMetaEvidence } from "../test/data";
-import { assembleAppealPanel, assembleDecision, assembleView, type FoundCaseReads } from "./caseAssembly";
+import { assembleAppeal, assembleDecision, assembleView, type FoundCaseReads } from "./caseAssembly";
 import type { SectionData } from "./types";
 
 const APPEAL_INFO: AppealInfo = { appealCost: 1_000n, appealPeriodStart: 1_700_000_000, appealPeriodEnd: 4_000_000_000 };
@@ -94,7 +95,7 @@ describe("case assembly", () => {
     const reads = readsWith(testFamily(), 3, sectionReady(testOkMetaEvidence()), { details: { currentRuling: { ok: false, error: failed } } });
     expect(assembleDecision(reads)).toEqual({ status: "unavailable", error: failed });
     expect(assembleView(reads)).toMatchObject({ status: "ready", value: { exists: true, period: 3 } });
-    expect(assembleAppealPanel(reads)).toEqual({ status: "ready", value: { kind: "fees-unavailable", error: failed } });
+    expect(assembleAppeal(reads).appealPanel).toEqual({ status: "ready", value: { kind: "fees-unavailable", error: failed } });
   });
 
   it("the dispute view no longer waits for the funding scan", () => {
@@ -190,12 +191,12 @@ describe("case assembly", () => {
     ],
     ["an IDisputeResolver v1 dispute in the appeal period waits for its meta-evidence before showing appeal cards", IDR_V1, 3, sectionLoading, { status: "loading" }],
   ])("%s", (_name, family, period, metaEvidence, expected) => {
-    expect(assembleAppealPanel(readsWith(family, period, metaEvidence))).toEqual(expected);
+    expect(assembleAppeal(readsWith(family, period, metaEvidence)).appealPanel).toEqual(expected);
   });
 
   it("a governor dispute in the appeal period without meta-evidence says its lists are unknown", () => {
     const governor: FamilyDetection = { ...IDR_V1, family: "governor", writeFamily: "governor" };
-    expect(assembleAppealPanel(readsWith(governor, 3, sectionReady(MISSING)))).toEqual({
+    expect(assembleAppeal(readsWith(governor, 3, sectionReady(MISSING))).appealPanel).toEqual({
       status: "unavailable",
       error: { code: "not-found", message: "This dispute has no meta-evidence, so its lists are unknown." },
     });
@@ -210,18 +211,123 @@ describe("case assembly", () => {
     ["gives no times for an arbitrable it did not recognise", sectionReady(false), { kind: "handled-by-arbitrable" }],
     ["gives no times when the arbitrable could not be checked", sectionUnavailable("no-rpc", "No read RPC."), { kind: "handled-by-arbitrable" }],
   ])("a view-only dispute in the appeal period %s", (_name, productRecognised, panel) => {
-    expect(assembleAppealPanel(readsWith(VIEW_ONLY, 3, sectionReady(testOkMetaEvidence()), { productRecognised }))).toEqual({ status: "ready", value: panel });
+    expect(assembleAppeal(readsWith(VIEW_ONLY, 3, sectionReady(testOkMetaEvidence()), { productRecognised })).appealPanel).toEqual({ status: "ready", value: panel });
   });
 
   it("gives no appeal card to a reserved answer above the dispute's number of choices, which jurors cannot vote", () => {
     const rulingOptions = { type: "single-select", titles: ["Yes", "No"], reserved: { "0x3": "Withdrawn" } } as const;
-    const panel = assembleAppealPanel(readsWith(testFamily(), 3, sectionReady(testOkMetaEvidence({ rulingOptions }))));
+    const panel = assembleAppeal(readsWith(testFamily(), 3, sectionReady(testOkMetaEvidence({ rulingOptions })))).appealPanel;
     if (panel.status !== "ready" || panel.value.kind !== "crowdfunding") throw new Error("The dispute has no appeal cards.");
     expect(panel.value.cards.map((card) => card.code)).toEqual([0n, 1n, 2n]);
     expect(panel.value.cards.map((card) => card.title)).not.toContain("Withdrawn");
   });
 
+  describe("a governor dispute whose dynamic script the gateway did not serve", () => {
+    const GOVERNOR = testFamily({
+      family: "governor",
+      writeFamily: "governor",
+      capabilities: { localId: "none", evidence: { kind: "uri-only" }, appeal: { kind: "governor" }, withdraw: { kind: "governor" } },
+    });
+    const IDR_V2 = testFamily();
+    const UNTITLED = { type: "single-select" } as const;
+    const LISTS = { type: "single-select", titles: ["List 17", "List 18"] } as const;
+    const scriptNotServed = (overrides: Parameters<typeof testOkMetaEvidence>[0]): MetaEvidenceResult => ({
+      ...testOkMetaEvidence(overrides),
+      script: { ran: false, reason: "script-fetch-failed" },
+    });
+    const scriptRan = (overrides: Parameters<typeof testOkMetaEvidence>[0]): MetaEvidenceResult => ({
+      ...testOkMetaEvidence(overrides),
+      script: { ran: true, kind: "standard", jsonDuplicateKeys: false },
+    });
+    const withScript = (script: Extract<MetaEvidenceResult, { status: "ok" }>["script"]): MetaEvidenceResult => ({ ...testOkMetaEvidence({ rulingOptions: UNTITLED }), script });
+    const PLACEHOLDER: MetaEvidenceResult = {
+      status: "invalid",
+      metaEvidence: testOkMetaEvidence({ rulingOptions: { type: "single-select", titles: [] } }).metaEvidence,
+      reason: "script-not-allowlisted",
+    };
+    const GATEWAY_FAILED: Unavailable = { code: "rpc-error", message: "The meta-evidence or its dynamic script could not be fetched from the IPFS gateway." };
+    const cardTitles = (panel: SectionData<AppealPanel>) => (panel.status === "ready" && panel.value.kind === "crowdfunding" ? panel.value.cards.map((card) => card.title) : panel);
+
+    it.each([
+      ["names no lists", UNTITLED],
+      ["has no ruling options", null],
+    ] as const)("holds the appeal cards in the appeal period when its meta-evidence %s, saying the gateway failed", (_name, rulingOptions) => {
+      expect(assembleAppeal(readsWith(GOVERNOR, 3, sectionReady(scriptNotServed({ rulingOptions })))).appealPanel).toEqual({
+        status: "unavailable",
+        error: GATEWAY_FAILED,
+      });
+    });
+
+    it.each<[string, FamilyDetection, MetaEvidenceResult, unknown]>([
+      ["a governor whose script ran keeps the lists it titled", GOVERNOR, scriptRan({ rulingOptions: LISTS }), ["List 17", "List 18"]],
+      ["a governor whose meta-evidence titles its own lists keeps them", GOVERNOR, scriptNotServed({ rulingOptions: LISTS }), ["List 17", "List 18"]],
+      [
+        "a governor whose meta-evidence has fallback outcomes keeps them",
+        GOVERNOR,
+        scriptNotServed({ rulingOptions: UNTITLED, fallbackOutcomes: ["First list", "Second list"] }),
+        ["First list", "Second list"],
+      ],
+      ["a governor with the tampered-data placeholder keeps the card of its current ruling", GOVERNOR, PLACEHOLDER, ["1"]],
+      ["a governor without a dynamic script keeps its Yes and No cards", GOVERNOR, withScript({ ran: false, reason: "no-script" }), ["Yes", "No"]],
+      ["a governor whose script names a chain it cannot read keeps its Yes and No cards", GOVERNOR, withScript({ ran: false, reason: "script-chain-unavailable" }), ["Yes", "No"]],
+      ["a governor whose script ran without titles keeps its Yes and No cards", GOVERNOR, withScript({ ran: true, kind: "standard", jsonDuplicateKeys: false }), ["Yes", "No"]],
+      ["an IDisputeResolver v1 dispute keeps its Yes and No cards", IDR_V1, scriptNotServed({ rulingOptions: UNTITLED }), ["Invalid / Refused to Arbitrate / Tied", "Yes", "No"]],
+      ["an IDisputeResolver v2 dispute keeps its Yes and No cards", IDR_V2, scriptNotServed({ rulingOptions: UNTITLED }), ["Invalid / Refused to Arbitrate / Tied", "Yes", "No"]],
+    ])("%s", (_name, family, metaEvidence, titles) => {
+      expect(cardTitles(assembleAppeal(readsWith(family, 3, sectionReady(metaEvidence))).appealPanel)).toEqual(titles);
+    });
+
+    it("holds the appeal cards with the gateway's failure while the funding scan is still running", () => {
+      const { appealPanel, appealHold } = assembleAppeal(readsWith(GOVERNOR, 3, sectionReady(scriptNotServed({ rulingOptions: UNTITLED })), { funding: sectionLoading }));
+      expect(appealPanel).toEqual({ status: "unavailable", error: GATEWAY_FAILED });
+      expect(appealHold).toEqual({ losingSide: null });
+    });
+
+    it("keeps the losing side's funding time of the held cards", () => {
+      const reads = readsWith(GOVERNOR, 3, sectionReady(scriptNotServed({ rulingOptions: UNTITLED })));
+      expect(assembleAppeal(reads).appealHold).toEqual({ losingSide: { kind: "deadline", at: 2_850_000_000 } });
+    });
+
+    it("keeps no losing side's funding time for held cards after a tie, where every list has the full period", () => {
+      const reads = readsWith(GOVERNOR, 3, sectionReady(scriptNotServed({ rulingOptions: UNTITLED })), { details: { currentRuling: { ok: true, value: 0n } } });
+      const shared = { ...reads, appeal: { ...reads.appeal, multipliers: sectionReady({ ...MULTIPLIERS, sharedMultiplier: 10_000n }) } };
+      const { appealPanel, appealHold } = assembleAppeal(shared);
+      expect(appealPanel).toMatchObject({ status: "unavailable" });
+      expect(appealHold).toEqual({ losingSide: null });
+    });
+
+    it("waits for a governor's details before holding its cards", () => {
+      const reads = readsWith(GOVERNOR, 3, sectionReady(scriptNotServed({ rulingOptions: UNTITLED })));
+      expect(assembleAppeal({ ...reads, details: sectionLoading }).appealPanel).toEqual({ status: "loading" });
+    });
+
+    it("keeps loading a governor's withdrawal in execution instead of holding it", () => {
+      const reads = readsWith(GOVERNOR, 4, sectionReady(scriptNotServed({ rulingOptions: UNTITLED })));
+      const pending = { ...reads, appeal: { ...reads.appeal, withdraw: sectionLoading } };
+      const { appealPanel, appealHold } = assembleAppeal(pending);
+      expect(appealPanel).toEqual({ status: "loading" });
+      expect(appealHold).toBeNull();
+    });
+
+    it("keeps the fees notice of a governor whose multipliers could not be read", () => {
+      const reads = readsWith(GOVERNOR, 3, sectionReady(scriptNotServed({ rulingOptions: UNTITLED })));
+      const failed = { ...reads, appeal: { ...reads.appeal, multipliers: sectionUnavailable("rpc-error", "The multipliers could not be read.") } };
+      expect(assembleAppeal(failed).appealPanel).toEqual({
+        status: "ready",
+        value: { kind: "fees-unavailable", error: { code: "rpc-error", message: "The multipliers could not be read." } },
+      });
+    });
+
+    it("keeps the reason of a governor whose details could not be read", () => {
+      const reads = readsWith(GOVERNOR, 3, sectionReady(scriptNotServed({ rulingOptions: UNTITLED })));
+      expect(assembleAppeal({ ...reads, details: sectionUnavailable("rpc-error", "The dispute could not be read.") }).appealPanel).toEqual({
+        status: "unavailable",
+        error: { code: "rpc-error", message: "The dispute could not be read." },
+      });
+    });
+  });
+
   it("holds a view-only dispute's appeal notice while its arbitrable is checked, so no line appears after it", () => {
-    expect(assembleAppealPanel(readsWith(VIEW_ONLY, 3, sectionReady(testOkMetaEvidence()), { productRecognised: sectionLoading }))).toEqual({ status: "loading" });
+    expect(assembleAppeal(readsWith(VIEW_ONLY, 3, sectionReady(testOkMetaEvidence()), { productRecognised: sectionLoading })).appealPanel).toEqual({ status: "loading" });
   });
 });

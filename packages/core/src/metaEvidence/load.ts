@@ -43,9 +43,11 @@ const ON_CHAIN_UNAVAILABLE: OnChainMetaEvidence = Object.freeze({
 /** Failures worth another attempt while the budget lasts. Every other failure is deterministic. */
 type TransientReason = Extract<MetaEvidenceFailure, "locator-error" | "fetch-error" | "script-failed" | "reality-lookup-failed">;
 
+export const GATEWAY_FETCH_FAILED_MESSAGE = "The meta-evidence or its dynamic script could not be fetched from the IPFS gateway.";
+
 const TRANSIENT_MESSAGES: Readonly<Record<TransientReason, string>> = {
   "locator-error": "The meta-evidence API did not answer.",
-  "fetch-error": "The meta-evidence or its dynamic script could not be fetched from the IPFS gateway.",
+  "fetch-error": GATEWAY_FETCH_FAILED_MESSAGE,
   "script-failed": "The dynamic script failed.",
   "reality-lookup-failed": "The Reality.eth question could not be read.",
 };

@@ -1,9 +1,11 @@
 import { expect, test } from "@playwright/test";
+import { serveGovernorScript } from "../support/governorScript";
 import { appOriginOf, callData, callTarget, fakeNetwork, loadRecording, type RpcAnswer, type RpcCall } from "../support/network";
 import { expectWalletConnected, injectUnresponsiveWallet, injectWallet, unresponsiveWalletRequests, walletRequests } from "../support/wallet";
 
 // Wagmi's reconnect restores the stored wallet, then waits on the one that never answers before it reports the connection
-// settled. Dispute 1621 is recorded in the appeal period, so its cards offer Fund.
+// settled. Dispute 1621 is recorded in the appeal period, so its cards offer Fund once a test script titles the governor's
+// lists.
 
 const RECORDING = loadRecording(new URL("fixtures/mainnet-1621-appeal.json", import.meta.url));
 const ACCOUNT = "0x00000000000000000000000000000000000000e2";
@@ -23,6 +25,7 @@ test("a returning wallet shows its account and receives the write request while 
   await injectWallet(context, { account: ACCOUNT, chainId: 1, stored: true });
   await injectUnresponsiveWallet(context);
   const traffic = await fakeNetwork(context, { appOrigin: appOriginOf(baseURL), recordings: [RECORDING], rpc: acceptingCheck });
+  await serveGovernorScript(page);
 
   await page.goto(CASE_PATH);
   await expectWalletConnected(page.getByRole("button", { name: /^Account 0x0000…00E2$/i }));

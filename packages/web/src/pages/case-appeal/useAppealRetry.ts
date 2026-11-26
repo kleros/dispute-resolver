@@ -6,15 +6,16 @@ import { foundLookup, queryKeys, useCaseRefresh, type CaseDispute } from "../../
  * The "appeal" refresh does not cover the multipliers, which keep a failed read as their data under a key of their
  * own, so they are invalidated too: unreadable multipliers are what the fees notice usually reports. The family, the
  * meta-evidence and the Dispute event are read again only when they did not load, so a Retry never repeats a log scan
- * or a meta-evidence fetch that succeeded.
+ * or a meta-evidence fetch that succeeded; a meta-evidence whose script the gateway did not serve is read again while
+ * the cards wait for its titles.
  */
 export function useAppealRetry(dispute: CaseDispute): () => void {
   const client = useQueryClient();
   const refresh = useCaseRefresh(dispute.chainId, dispute.disputeId);
-  const { chainId, disputeId, family, metaEvidence, disputeEvent } = dispute;
+  const { chainId, disputeId, family, metaEvidence, disputeEvent, appealHold } = dispute;
   const arbitrable = foundLookup(dispute)?.binding.arbitrated;
   const familyLoaded = family.status === "ready";
-  const metaEvidenceLoaded = metaEvidence.status === "ready" && metaEvidence.value.status === "ok";
+  const metaEvidenceLoaded = metaEvidence.status === "ready" && metaEvidence.value.status === "ok" && appealHold === null;
   const eventFound = disputeEvent.status === "ready" && disputeEvent.value.status === "found";
 
   return useCallback(() => {

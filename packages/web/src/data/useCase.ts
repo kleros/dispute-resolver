@@ -15,7 +15,7 @@ import {
 import { useProductFunding, useProductRecognised } from "./appealHooks";
 import { executedRulingFrom, useAppealReads, type AppealPlan } from "./caseAppealReads";
 import {
-  assembleAppealPanel,
+  assembleAppeal,
   assembleDecision,
   assembleView,
   assembleWriteContext,
@@ -130,7 +130,7 @@ export function useCase(chainId: number, disputeId: bigint | null, account?: Add
     disputeEvent,
     evidence,
     appealDecisions: appealDecisionsOf(details),
-    appealPanel: assembleAppealPanel(reads),
+    ...assembleAppeal(reads),
     decision: assembleDecision(reads),
     write: assembleWriteContext(reads),
   };
@@ -146,6 +146,7 @@ function everySection(state: Exclude<SectionData<unknown>, { status: "ready" }>)
     evidence: section,
     appealDecisions: section,
     appealPanel: section,
+    appealHold: null,
     decision: section,
     write: section,
   };

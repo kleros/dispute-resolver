@@ -1,11 +1,13 @@
 import { expect, test, type Page } from "@playwright/test";
 import { pill } from "../support/header";
 import { appOriginOf, fakeNetwork, loadRecording } from "../support/network";
+import { serveGovernorScript } from "../support/governorScript";
 import { expectNoSidewaysScroll } from "../support/pageScroll";
 import { changeWalletChain, expectWalletConnected, injectWallet, walletRequests } from "../support/wallet";
 
 // playwright.config.ts gives the e2e build a WalletConnect project ID; every wallet service is aborted, so the injected
-// wallet is the only one. Dispute 1621 is recorded in the appeal period, so its cards offer Fund.
+// wallet is the only one. Dispute 1621 is recorded in the appeal period, so its cards offer Fund once a test script titles
+// the governor's lists.
 
 const RECORDING = loadRecording(new URL("fixtures/mainnet-1621-appeal.json", import.meta.url));
 const ACCOUNT = "0x00000000000000000000000000000000000000e2";
@@ -39,6 +41,7 @@ function ongoingHeading(page: Page) {
 test("refuses Fund in one toast and sends nothing while the wallet's switch to the page chain waits", async ({ context, page, baseURL }) => {
   await injectWallet(context, { account: ACCOUNT, chainId: 100, heldSwitches: true });
   const traffic = await fakeNetwork(context, { appOrigin: appOriginOf(baseURL), recordings: [RECORDING] });
+  await serveGovernorScript(page);
 
   await page.goto(CASE_PATH);
   await expectWalletConnected(accountButton(page));

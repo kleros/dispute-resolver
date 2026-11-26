@@ -143,6 +143,7 @@ export function testCaseDispute(overrides: Partial<CaseDispute> = {}): CaseDispu
     appealDecisions: sectionLoading,
     courts: sectionLoading,
     appealPanel: sectionLoading,
+    appealHold: null,
     decision: sectionLoading,
     write: sectionLoading,
     ...overrides,

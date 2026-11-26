@@ -234,6 +234,7 @@ function caseDispute(panel: AppealPanel | SectionData<AppealPanel>, options: Dis
     appealDecisions: sectionLoading,
     courts: sectionLoading,
     appealPanel,
+    appealHold: null,
     decision: options.decision ?? sectionLoading,
     write: options.write ?? sectionReady(context),
   };

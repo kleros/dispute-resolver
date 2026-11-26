@@ -16,7 +16,16 @@ export { REGISTRY, getOverride, isDisplayAllowlisted, toRegistryAddress } from "
 export { createReadClients, describeError, redactingHttp } from "./rpc";
 export { createFamilyCache, describeAppealRules, detectFamily } from "./families";
 export { JSON_DUPLICATE_KEY_GUARD } from "./reality";
-export { CASE_PAGE_BUDGET_MS, ONGOING_BUDGET_MS, displayChainId, loadMetaEvidence, metaEvidenceCachePolicy, parseCachedMetaEvidenceResult, realityNotice } from "./metaEvidence";
+export {
+  CASE_PAGE_BUDGET_MS,
+  GATEWAY_FETCH_FAILED_MESSAGE,
+  ONGOING_BUDGET_MS,
+  displayChainId,
+  loadMetaEvidence,
+  metaEvidenceCachePolicy,
+  parseCachedMetaEvidenceResult,
+  realityNotice,
+} from "./metaEvidence";
 export {
   FIRST_EVIDENCE_PAGE,
   buildEvidenceDocument,
@@ -55,6 +64,7 @@ export {
   readWithdrawable,
   roundStartBlock,
   roundsToScan,
+  usesDefaultOutcomes,
   type EnteredAnswerFunding,
 } from "./appeals";
 export { readProductFunding, readsProductFunding, recogniseProduct } from "./products";
