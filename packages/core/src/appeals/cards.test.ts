@@ -5,7 +5,7 @@ import { REGISTRY, getOverride } from "../registry";
 import { decodeRulingCode, formatRuling } from "../rulings";
 import type { FallbackOutcomes, RulingOptions } from "../rulings/types";
 import { UNSLASHED } from "./__fixtures__/recorded";
-import { buildCrowdfundingCards, cardFundingState, enteredAnswerFunding } from "./index";
+import { buildCrowdfundingCards, cardFundingState, enteredAnswerFunding, usesDefaultOutcomes } from "./index";
 import type { AppealAmounts, CrowdfundingCard, CrowdfundingSet, FreeInputCard, RoundFunding } from "./types";
 
 const UNSLASHED_OVERRIDE = getOverride(REGISTRY, 1, UNSLASHED.arbitrable);
@@ -194,6 +194,14 @@ describe("buildCrowdfundingCards", () => {
       [2n, "Yes"],
     ]);
     expect(set.cards[2]).toMatchObject({ origin: "option", isWinner: true, side: "winner" });
+  });
+
+  it("builds Yes (1) and No (2) for an unknown type without fallback outcomes, even when it carries titles", () => {
+    expect(summary(build({ rulingOptions: { type: "bool", titles: ["True", "False"] }, currentRuling: 1n }).cards)).toEqual([
+      [0n, REFUSED_TITLE],
+      [1n, "Yes"],
+      [2n, "No"],
+    ]);
   });
 
   it("falls back to Yes (1) and No (2) without fallback outcomes, also for a select without titles", () => {
@@ -708,5 +716,29 @@ describe("cardFundingState", () => {
     ["is funded once fully funded, after its deadline", true, 900, "funded"],
   ] as const)("%s", (_, fullyFunded, now, expected) => {
     expect(cardFundingState({ deadline: 500, fullyFunded }, now)).toBe(expected);
+  });
+});
+
+describe("usesDefaultOutcomes", () => {
+  it.each<readonly [string, RulingOptions, FallbackOutcomes]>([
+    ["a single-select without titles or fallback outcomes", { type: "single-select" }, null],
+    ["a single-select without titles whose fallback outcomes are empty", { type: "single-select" }, []],
+    ["a multiple-select without titles", { type: "multiple-select" }, null],
+    ["a question of an unknown type, even with titles", { type: "bool", titles: ["True", "False"] }, null],
+  ])("counts %s as the built-in Yes and No", (_name, options, fallbackOutcomes) => {
+    expect(usesDefaultOutcomes(options, fallbackOutcomes)).toBe(true);
+  });
+
+  it.each<readonly [string, RulingOptions, FallbackOutcomes]>([
+    ["a single-select with titles", { type: "single-select", titles: ["List 17", "List 18"] }, null],
+    ["a single-select titled Yes and No", { type: "single-select", titles: ["Yes", "No"] }, null],
+    ["a single-select whose titles are empty, as the tampered-data placeholder", { type: "single-select", titles: [] }, null],
+    ["a multiple-select with up to four titles", { type: "multiple-select", titles: ["A", "B"] }, null],
+    ["a multiple-select above four titles", { type: "multiple-select", titles: ["A", "B", "C", "D", "E"] }, null],
+    ["a variable question", { type: "uint" }, null],
+    ["a question without titles that has fallback outcomes", { type: "single-select" }, ["Accept", "Reject"]],
+    ["a question without titles whose fallback outcomes are Yes and No", { type: "single-select" }, ["Yes", "No"]],
+  ])("does not count %s as the built-in Yes and No", (_name, options, fallbackOutcomes) => {
+    expect(usesDefaultOutcomes(options, fallbackOutcomes)).toBe(false);
   });
 });

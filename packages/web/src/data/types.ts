@@ -18,6 +18,7 @@ import type {
   GetReadClient,
   Hex,
   LocalIdResolution,
+  LosingSideDeadline,
   MetaEvidenceResult,
   OngoingList,
   Outcome,
@@ -94,9 +95,16 @@ export interface CaseDispute {
   readonly appealDecisions: SectionData<readonly AppealDecisionEvent[]>;
   readonly courts: SectionData<readonly Court[]>;
   readonly appealPanel: SectionData<AppealPanel>;
+  /** Set while the cards wait for a governor's list titles; `appealPanel` is then unavailable. */
+  readonly appealHold: AppealHold | null;
   /** The jury's decision and, in execution, the winner; it degrades on its own, never the header or the timeline. */
   readonly decision: SectionData<Decision>;
   readonly write: SectionData<CaseWriteContext>;
+}
+
+/** The losing side's funding time comes from the chain, not the titles, so the timeline keeps it through the hold. */
+export interface AppealHold {
+  readonly losingSide: LosingSideDeadline | null;
 }
 
 export type FoundLookup = Extract<DisputeLookup, { status: "found" }>;

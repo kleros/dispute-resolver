@@ -1,4 +1,4 @@
-export { CASE_PAGE_BUDGET_MS, ONGOING_BUDGET_MS, loadMetaEvidence, metaEvidenceLocatorUrl } from "./load";
+export { CASE_PAGE_BUDGET_MS, GATEWAY_FETCH_FAILED_MESSAGE, ONGOING_BUDGET_MS, loadMetaEvidence, metaEvidenceLocatorUrl } from "./load";
 export { INVALID_META_EVIDENCE, parseMetaEvidence } from "./schema";
 export { displayChainId } from "./displayChain";
 export { buildScriptParameters } from "./scriptParams";

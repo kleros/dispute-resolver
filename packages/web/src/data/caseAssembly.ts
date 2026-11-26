@@ -1,10 +1,14 @@
 import {
+  GATEWAY_FETCH_FAILED_MESSAGE,
   buildAppealPanel,
   buildDecision,
   buildDisputeView,
   decisionNeedsFunding,
+  losingSideDeadline,
   needsRulingOptions,
+  optionsWithinChoices,
   readAppealCost,
+  usesDefaultOutcomes,
   type AppealPanel,
   type AppealRules,
   type ArbitratorDispute,
@@ -27,8 +31,8 @@ import {
   type Unavailable,
   type WithdrawState,
 } from "@dispute-resolver/core";
-import { LOADING, fromOutcome, metaEvidenceSection, ready } from "./sectionData";
-import type { CaseWriteContext, SectionData } from "./types";
+import { LOADING, fromOutcome, metaEvidenceSection, ready, unavailable } from "./sectionData";
+import type { AppealHold, CaseDispute, CaseWriteContext, SectionData } from "./types";
 
 /** `null`: not read for this period and family. */
 export interface AppealReads {
@@ -173,7 +177,7 @@ function panelOptions(reads: FoundCaseReads, family: FamilyDetection, noun: Ruli
   return metaEvidenceSection(reads.metaEvidence, `This dispute has no meta-evidence, so its ${noun}s are unknown.`);
 }
 
-export function assembleAppealPanel(reads: FoundCaseReads): SectionData<AppealPanel> {
+function builtAppealPanel(reads: FoundCaseReads): SectionData<AppealPanel> {
   const { family, details, appeal, rules } = reads;
   if (family.status !== "ready") return family;
   if (details.status !== "ready") return details;
@@ -203,6 +207,38 @@ export function assembleAppealPanel(reads: FoundCaseReads): SectionData<AppealPa
       productRecognised: recognised?.ok === true && recognised.value,
     }),
   );
+}
+
+/**
+ * A governor whose meta-evidence names no lists takes their titles from its dynamic script alone, so when the gateway did
+ * not serve the script its cards would be Yes and No, funding lists nobody can tell apart.
+ */
+function listTitlesUnloaded(reads: FoundCaseReads): boolean {
+  const { family, metaEvidence } = reads;
+  const { period, numberOfChoices } = reads.lookup.dispute;
+  if (family.status !== "ready" || family.value.writeFamily !== "governor" || !needsRulingOptions(period, family.value) || metaEvidence.status !== "ready") return false;
+  const result = metaEvidence.value;
+  if (result.status !== "ok" || result.script.ran || result.script.reason !== "script-fetch-failed") return false;
+  const { rulingOptions, fallbackOutcomes } = result.metaEvidence;
+  return usesDefaultOutcomes(optionsWithinChoices(rulingOptions ?? NO_RULING_OPTIONS, numberOfChoices).rulingOptions, fallbackOutcomes);
+}
+
+/**
+ * The hold replaces the cards and the funding reads they wait for, so it shows before a funding scan ends. A failed read
+ * and a fees notice keep their own reason and Retry.
+ */
+function holdOf(reads: FoundCaseReads, panel: SectionData<AppealPanel>): AppealHold | null {
+  if (panel.status === "unavailable" || reads.details.status !== "ready" || !listTitlesUnloaded(reads)) return null;
+  if (panel.status === "loading") return { losingSide: null };
+  return panel.value.kind === "crowdfunding" ? { losingSide: losingSideDeadline(panel.value) } : null;
+}
+
+const HELD_FOR_TITLES: SectionData<never> = unavailable("rpc-error", GATEWAY_FETCH_FAILED_MESSAGE);
+
+export function assembleAppeal(reads: FoundCaseReads): Pick<CaseDispute, "appealPanel" | "appealHold"> {
+  const panel = builtAppealPanel(reads);
+  const appealHold = holdOf(reads, panel);
+  return { appealPanel: appealHold === null ? panel : HELD_FOR_TITLES, appealHold };
 }
 
 export function assembleWriteContext(reads: FoundCaseReads): SectionData<CaseWriteContext> {

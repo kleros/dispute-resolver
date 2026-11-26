@@ -1,17 +1,32 @@
 import * as core from "@dispute-resolver/core";
-import type { Address, DisputeEventResult, Outcome, RoundFunding } from "@dispute-resolver/core";
+import type { Address, DisputeEventResult, FetchResponse, Fetcher, MetaEvidenceEventResult, MetaEvidenceResult, Outcome, RoundFunding } from "@dispute-resolver/core";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { QueryClient } from "@tanstack/react-query";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useCase } from "../../data";
-import { createTestDeps, deferred, testCourt, testDetails, testDisputeEvent, testEvidenceList, testFamily, testFoundLookup, testOkMetaEvidence } from "../../test/data";
+import {
+  TEST_META_EVIDENCE_URI,
+  createTestDeps,
+  deferred,
+  testCourt,
+  testDetails,
+  testDisputeEvent,
+  testEvidenceList,
+  testFamily,
+  testFoundLookup,
+  testOkMetaEvidence,
+} from "../../test/data";
 import { testPageChain } from "../../test/routing";
 import { renderWithProviders } from "../../test/shell";
 import { TEST_SENT, TEST_WALLET_ADDRESS, createConnectedTestWallet, fakeWriteController, type FakeWriteController } from "../../test/wallet";
+import { DisputeTimeline } from "../case-summary";
 import { AppealSection } from "./AppealSection";
 import { FEES_UNAVAILABLE_TITLE, withdrawNothing } from "./copy";
 
 vi.mock("@dispute-resolver/core", async (importOriginal) => (await import("../../test/data/mockCoreReads")).mockCoreReads(importOriginal));
+
+const actualCore = await vi.importActual<typeof core>("@dispute-resolver/core");
 
 const writes = vi.hoisted((): { fake: FakeWriteController | null } => ({ fake: null }));
 
@@ -58,14 +73,30 @@ function programReads(period: 3 | 4): void {
   vi.mocked(core.readWithdrawable).mockResolvedValue({ status: "available", beneficiary: ACCOUNT, total: ETH, items: [{ dialect: "idr-v2", ruling: 1n, amount: ETH }] });
 }
 
+const APPEAL_START = 1_700_000_000;
+const APPEAL_INFO = { appealCost: ETH, appealPeriodStart: APPEAL_START, appealPeriodEnd: 4_000_000_000 };
+const MULTIPLIERS = { winnerStakeMultiplier: 10_000n, loserStakeMultiplier: 20_000n, loserAppealPeriodMultiplier: 5_000n, denominator: 10_000n };
+
+function CaseTimelineAndAppeal() {
+  const data = useCase(1, 1n, ACCOUNT);
+  if (data.status !== "dispute") return null;
+  const { chain } = testPageChain(1);
+  return (
+    <>
+      <DisputeTimeline dispute={data} chain={chain} />
+      <AppealSection dispute={data} chain={chain} />
+    </>
+  );
+}
+
 function CaseAppeal() {
   const data = useCase(1, 1n, ACCOUNT);
   return data.status === "dispute" ? <AppealSection dispute={data} chain={testPageChain(1).chain} /> : null;
 }
 
-async function renderCase() {
+async function renderCase(deps = createTestDeps()) {
   const wallet = await createConnectedTestWallet();
-  return renderWithProviders(<CaseAppeal />, { path: "/1", deps: createTestDeps(), wallet });
+  return renderWithProviders(<CaseAppeal />, { path: "/1", deps, wallet });
 }
 
 function winnerCard(): HTMLElement {
@@ -265,5 +296,131 @@ describe("AppealSection retry", () => {
 
     expect(await findRulingsToFund()).toBeInTheDocument();
     expect(core.detectFamily).toHaveBeenCalledTimes(3);
+  });
+});
+
+describe("AppealSection on a governor whose dynamic script the gateway did not serve", () => {
+  const GATEWAY_FAILED = "The meta-evidence or its dynamic script could not be fetched from the IPFS gateway.";
+  const SCRIPT_NOT_SERVED: MetaEvidenceResult = { ...testOkMetaEvidence({ rulingOptions: { type: "single-select" } }), script: { ran: false, reason: "script-fetch-failed" } };
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  function programGovernor(): void {
+    programReads(3);
+    vi.mocked(core.detectFamily).mockResolvedValue(GOVERNOR);
+    vi.mocked(core.loadMetaEvidence).mockResolvedValue(SCRIPT_NOT_SERVED);
+  }
+
+  it("holds the cards with the gateway's failure while the funding scan is still running", async () => {
+    programGovernor();
+    vi.mocked(core.readRoundFunding).mockReturnValue(deferred<Outcome<RoundFunding>>().promise);
+    await renderCase();
+    expect(await screen.findByRole("button", { name: "Retry Appeal" })).toBeInTheDocument();
+    expect(screen.getByText(GATEWAY_FAILED)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Fund/ })).toBeNull();
+  });
+
+  const APPEAL_READS = ["chainTime", "details", "evidence", "executedRuling", "funding", "lookup", "multipliers", "productFunding"];
+  const WITH_META_EVIDENCE = ["chainTime", "details", "evidence", "executedRuling", "funding", "lookup", "metaEvidence", "multipliers", "productFunding"];
+
+  it.each<[string, string, () => void, readonly string[]]>([
+    ["the held cards' Retry also reads the meta-evidence again", "Retry Appeal", () => undefined, WITH_META_EVIDENCE],
+    [
+      "'Retry the appeal fees' reads the appeal again but not the meta-evidence",
+      "Retry the appeal fees",
+      () => vi.mocked(core.readMultipliers).mockResolvedValueOnce({ ok: false, error: RPC_DOWN }),
+      APPEAL_READS,
+    ],
+    [
+      "Retry after a failed details read reads the appeal again but not the meta-evidence",
+      "Retry Appeal",
+      () => vi.mocked(core.readDisputeDetails).mockRejectedValueOnce(new Error("socket hang up")),
+      APPEAL_READS,
+    ],
+    [
+      "Retry after a failed meta-evidence load reads the appeal and the meta-evidence again",
+      "Retry Appeal",
+      () => vi.mocked(core.loadMetaEvidence).mockResolvedValue({ status: "failed", reason: "fetch-error", error: { code: "rpc-error", message: GATEWAY_FAILED } }),
+      WITH_META_EVIDENCE,
+    ],
+  ])("%s", async (_name, button, program, kinds) => {
+    const user = userEvent.setup();
+    programGovernor();
+    program();
+    const invalidate = vi.spyOn(QueryClient.prototype, "invalidateQueries");
+    await renderCase();
+    const retry = await screen.findByRole("button", { name: button });
+    invalidate.mockClear();
+
+    await user.click(retry);
+
+    expect(invalidate.mock.calls.map(([filters]) => String(filters?.queryKey?.[1])).sort((a, b) => a.localeCompare(b))).toEqual(kinds);
+  });
+
+  it.each([
+    ["keeps the losing side's notice in the timeline", 1n, true],
+    ["adds no losing side's notice to the timeline after a tie, where every list has the full period", 0n, false],
+  ] as const)("while the cards are held, %s", async (_name, ruling, notice) => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime((APPEAL_START + 3_600) * 1000);
+    programGovernor();
+    vi.mocked(core.readMultipliers).mockResolvedValue({ ok: true, value: { ...MULTIPLIERS, sharedMultiplier: 10_000n } });
+    vi.mocked(core.readDisputeDetails).mockImplementation((_context, found) =>
+      Promise.resolve(testDetails({ status: "found", ...found }, { currentRuling: { ok: true, value: ruling }, appealInfo: { ok: true, value: APPEAL_INFO } })),
+    );
+    const wallet = await createConnectedTestWallet();
+    renderWithProviders(<CaseTimelineAndAppeal />, { path: "/1", deps: createTestDeps(), wallet });
+
+    expect(await screen.findByText(GATEWAY_FAILED)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Fund/ })).toBeNull();
+    const timeline = await screen.findByRole("region", { name: "Dispute timeline" });
+    if (notice) expect(await within(timeline).findByText(/^Losing side: .+ left to fund an appeal$/)).toBeInTheDocument();
+    else expect(within(timeline).queryByText(/^Losing side:/)).toBeNull();
+  });
+
+  it("with the real meta-evidence pipeline, a script answered with HTTP 429 holds Fund, and Retry once the gateway serves it shows the lists", async () => {
+    const user = userEvent.setup();
+    programGovernor();
+    vi.mocked(core.loadMetaEvidence).mockImplementation(actualCore.loadMetaEvidence);
+    const metaEvidenceEvent: Outcome<MetaEvidenceEventResult> = {
+      ok: true,
+      value: { status: "found", event: { uri: TEST_META_EVIDENCE_URI, blockNumber: 100n, logIndex: 0, transactionHash: "0x01", emissions: 1 } },
+    };
+    vi.mocked(core.readMetaEvidenceEvent).mockResolvedValue(metaEvidenceEvent);
+    const scriptCid = core.REGISTRY.dynamicScriptAllowlist[1]?.find((path) => !path.includes("/"));
+    if (scriptCid === undefined) throw new Error("No script is allowlisted on chain 1.");
+    const document = { title: "Kleros governor session", description: "", rulingOptions: {}, dynamicScriptURI: `/ipfs/${scriptCid}` };
+    const gateway = { scriptStatus: 429 };
+    const answer = (status: number, text: string): FetchResponse => ({
+      ok: status === 200,
+      status,
+      json: () => Promise.resolve(JSON.parse(text) as unknown),
+      text: () => Promise.resolve(text),
+    });
+    const fetcher: Fetcher = (url) => {
+      if (url.endsWith(TEST_META_EVIDENCE_URI)) return Promise.resolve(answer(200, JSON.stringify(document)));
+      if (url.endsWith(`/ipfs/${scriptCid}`)) return Promise.resolve(answer(gateway.scriptStatus, "getMetaEvidence"));
+      return Promise.resolve(answer(404, ""));
+    };
+    const runScript = vi.fn(() => ({ status: "ok", value: { rulingOptions: { type: "single-select", titles: ["List 17", "List 18"] } }, jsonDuplicateKeys: false }) as const);
+    await renderCase(createTestDeps({ fetcher, runScript }));
+    const retry = await screen.findByRole("button", { name: "Retry Appeal" });
+    expect(screen.getByText("Appeal unavailable")).toBeInTheDocument();
+    expect(screen.getByText(GATEWAY_FAILED)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Fund/ })).toBeNull();
+    expect(runScript).not.toHaveBeenCalled();
+
+    gateway.scriptStatus = 200;
+    await user.click(retry);
+
+    const lists = [await screen.findByRole("listitem", { name: "List 17" }), screen.getByRole("listitem", { name: "List 18" })];
+    for (const card of lists) expect(within(card).getByRole("button", { name: /^Fund/ })).toBeEnabled();
+    expect(screen.getAllByRole("button", { name: /^Fund/ })).toHaveLength(2);
+    expect(screen.queryByText(GATEWAY_FAILED)).toBeNull();
+    expect(runScript).toHaveBeenCalledTimes(1);
+    expect(core.loadMetaEvidence).toHaveBeenCalledTimes(2);
   });
 });

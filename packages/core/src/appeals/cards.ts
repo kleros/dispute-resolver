@@ -80,16 +80,30 @@ function combinationCards(context: CardContext, titles: readonly string[]): Crow
   return cards;
 }
 
+type Listing = { readonly cards: "options" | "combinations" | "default"; readonly titles: readonly string[] } | null;
+
 /**
- * The cards the question lists: its options, its combinations up to four options, or the fallback outcomes. A variable
- * question and a multiple-select above four options list none: their answers come from the round.
+ * What the question lists: its options, its combinations up to four options, its fallback outcomes, or else the built-in
+ * Yes and No. A variable question and a multiple-select above four options list none: their answers come from the round.
  */
-function listedCards(context: CardContext, options: RulingOptions, fallbackOutcomes: FallbackOutcomes): CrowdfundingCard[] {
+function listingOf(options: RulingOptions, fallbackOutcomes: FallbackOutcomes): Listing {
   const { type, titles } = options;
-  if (isVariableType(type)) return [];
-  if (type === "single-select" && titles !== undefined) return optionCards(context, titles);
-  if (type === MULTIPLE_SELECT && titles !== undefined) return titles.length <= MAX_ENUMERATED_OPTIONS ? combinationCards(context, titles) : [];
-  return optionCards(context, fallbackOutcomes !== null && fallbackOutcomes.length > 0 ? fallbackOutcomes : DEFAULT_OUTCOMES);
+  if (isVariableType(type)) return null;
+  if (type === "single-select" && titles !== undefined) return { cards: "options", titles };
+  if (type === MULTIPLE_SELECT && titles !== undefined) return titles.length <= MAX_ENUMERATED_OPTIONS ? { cards: "combinations", titles } : null;
+  if (fallbackOutcomes !== null && fallbackOutcomes.length > 0) return { cards: "options", titles: fallbackOutcomes };
+  return { cards: "default", titles: DEFAULT_OUTCOMES };
+}
+
+/** Whether the question's listed cards are the built-in Yes and No, which name none of its own answers. */
+export function usesDefaultOutcomes(options: RulingOptions, fallbackOutcomes: FallbackOutcomes): boolean {
+  return listingOf(options, fallbackOutcomes)?.cards === "default";
+}
+
+function listedCards(context: CardContext, options: RulingOptions, fallbackOutcomes: FallbackOutcomes): CrowdfundingCard[] {
+  const listing = listingOf(options, fallbackOutcomes);
+  if (listing === null) return [];
+  return listing.cards === "combinations" ? combinationCards(context, listing.titles) : optionCards(context, listing.titles);
 }
 
 type AnswerOrigin = Extract<CardOrigin, "current-ruling" | "funded-ruling" | "contributed-value">;

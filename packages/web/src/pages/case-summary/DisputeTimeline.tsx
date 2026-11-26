@@ -154,7 +154,7 @@ function TimelineSteps({ columns, losing }: { readonly columns: readonly Timelin
 export function DisputeTimeline({ dispute }: CaseSectionProps) {
   const view = existingView(dispute);
   if (view === null) return null;
-  const losing = panelLosingSide(dispute.appealPanel);
+  const losing = dispute.appealHold === null ? panelLosingSide(dispute.appealPanel) : dispute.appealHold.losingSide;
   return (
     <SectionContent data={viewField(view, (value) => value.timeline)} section="Timeline" loading={<SectionSkeleton variant="text" lines={2} />}>
       {(timeline, reveal) => (
