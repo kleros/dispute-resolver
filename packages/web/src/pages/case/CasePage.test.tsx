@@ -10,6 +10,7 @@ import type {
   MetaEvidenceResult,
   Outcome,
   Period,
+  RoundFunding,
   Timeline,
 } from "@dispute-resolver/core";
 import { act, screen, waitFor, within } from "@testing-library/react";
@@ -1219,6 +1220,30 @@ describe("section Retry", () => {
     });
     expect(await screen.findByRole("heading", { level: 2, name: "Dispute 1 title" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Retry Dispute summary" })).toBeNull();
+  });
+
+  it("Retry on Decision after a failed current ruling is idle again once the details are read again, while the funding and evidence reads the same press started still run", async () => {
+    programReads({ period: 3 });
+    detailsReads.mockResolvedValue(detailsRead(3, 1n, { currentRuling: { ok: false, error: RPC_DOWN } }));
+    renderCase("/1/cases/1");
+    expect(await screen.findByText("Decision unavailable")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(core.readRoundFunding).toHaveBeenCalledTimes(1);
+    });
+    vi.mocked(core.readRoundFunding).mockReturnValue(deferred<Outcome<RoundFunding>>().promise);
+    vi.mocked(core.loadEvidence).mockReturnValue(deferred<Outcome<EvidenceList>>().promise);
+
+    await pressRetry("Decision");
+
+    await waitFor(() => {
+      expect(core.readRoundFunding).toHaveBeenCalledTimes(2);
+      expect(core.loadEvidence).toHaveBeenCalledTimes(2);
+    });
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Retry Decision" })).not.toHaveAttribute("aria-disabled");
+    });
+    expect(detailsReads).toHaveBeenCalledTimes(2);
+    expect(screen.getByText("Decision unavailable")).toBeInTheDocument();
   });
 
   it("while a section's Retry reads again, the other sections keep their content", async () => {

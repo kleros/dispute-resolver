@@ -1,5 +1,5 @@
 import * as core from "@dispute-resolver/core";
-import type { Address, DisputeEventResult, FamilyDetection, MetaEvidenceResult, Outcome, Period } from "@dispute-resolver/core";
+import type { Address, DisputeEventResult, DisputeReads, EvidenceList, FamilyDetection, MetaEvidenceResult, Outcome, Period } from "@dispute-resolver/core";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import type { QueryClient } from "@tanstack/react-query";
 import { numberToHex } from "viem";
@@ -9,6 +9,7 @@ import {
   createTestDeps,
   createTestQueryClient,
   dataWrapper,
+  deferred,
   testCourt,
   testDetails,
   testDisputeEvent,
@@ -434,9 +435,9 @@ describe("useCaseRefresh", () => {
     return { number: "0x10", timestamp: numberToHex(1_700_000_000), hash: `0x${"cd".repeat(32)}`, transactions: [] };
   });
 
-  function renderCaseWithRefresh() {
+  function renderCaseWithRefresh(client?: QueryClient) {
     const deps = createTestDeps({ rpc: latestBlock });
-    return renderHook(() => ({ data: useCase(1, 1n, ACCOUNT), refresh: useCaseRefresh(1, 1n), clockOffset: useChainClockOffset(1) }), { wrapper: dataWrapper({ deps }) });
+    return renderHook(() => ({ data: useCase(1, 1n, ACCOUNT), refresh: useCaseRefresh(1, 1n), clockOffset: useChainClockOffset(1) }), { wrapper: dataWrapper({ deps, client }) });
   }
 
   function settledData(result: { readonly current: { readonly data: CaseData } }): Promise<CaseDispute> {
@@ -474,6 +475,54 @@ describe("useCaseRefresh", () => {
     await act(() => result.current.refresh("appeal"));
     expect(core.readExecutedRuling).toHaveBeenCalledTimes(2);
     expect(core.readProductFunding).toHaveBeenCalledTimes(2);
+  });
+
+  it("a refresh that names its reads settles once they are read again while another read it started still runs, and naming none waits for every read", async () => {
+    programReads(3);
+    const client = createTestQueryClient();
+    const { result } = renderCaseWithRefresh(client);
+    await settledData(result);
+    const details = deferred<DisputeReads>();
+    const evidence = deferred<Outcome<EvidenceList>>();
+    vi.mocked(core.readDisputeDetails).mockReturnValueOnce(details.promise);
+    vi.mocked(core.loadEvidence).mockReturnValue(evidence.promise);
+    const settled = { named: false, all: false };
+
+    act(() => {
+      void result.current.refresh("appeal", ["details"]).then(() => {
+        settled.named = true;
+      });
+    });
+    await waitFor(() => {
+      expect(core.readDisputeDetails).toHaveBeenCalledTimes(2);
+      expect(core.loadEvidence).toHaveBeenCalledTimes(2);
+    });
+    expect(settled.named).toBe(false);
+    await act(async () => {
+      details.resolve(testDetails(testFoundLookup({ period: 3 }), { appealInfo: APPEAL_INFO }));
+      await details.promise;
+    });
+    await waitFor(() => {
+      expect(settled.named).toBe(true);
+    });
+
+    act(() => {
+      void result.current.refresh("appeal").then(() => {
+        settled.all = true;
+      });
+    });
+    await waitFor(() => {
+      expect(core.readDisputeDetails).toHaveBeenCalledTimes(3);
+      expect(client.isFetching()).toBe(1);
+    });
+    expect(settled.all).toBe(false);
+    await act(async () => {
+      evidence.resolve({ ok: true, value: EVIDENCE });
+      await evidence.promise;
+    });
+    await waitFor(() => {
+      expect(settled.all).toBe(true);
+    });
   });
 
   it("a refresh after a mined funding reads the details, the round's funding from the Dispute event, the evidence and the chain time again", async () => {

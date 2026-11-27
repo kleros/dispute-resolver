@@ -62,8 +62,8 @@ export function DisputeSections({ dispute, chain, retries }: DisputeSectionsProp
   const rereadMetaEvidence = async () => {
     if (found !== undefined) await client.invalidateQueries({ queryKey: queryKeys.metaEvidence(dispute.chainId, dispute.disputeId, found.binding.arbitrated) });
   };
-  const rereadDetails = () => Promise.all([refresh("appeal"), client.invalidateQueries({ queryKey: queryKeys.courts(dispute.chainId) })]);
-  const rereadAppeal = () => refresh("appeal");
+  const rereadDetails = () => Promise.all([refresh("appeal", ["lookup", "details"]), client.invalidateQueries({ queryKey: queryKeys.courts(dispute.chainId) })]);
+  const rereadAppeal = () => refresh("appeal", ["lookup", "details", "funding", "executedRuling", "productFunding"]);
   const rereadEvidence = () =>
     Promise.all([
       refresh("evidence"),

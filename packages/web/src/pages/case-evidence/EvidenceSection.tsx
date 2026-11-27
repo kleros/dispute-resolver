@@ -112,7 +112,7 @@ function useWriteContextRetry(dispute: CaseDispute): RetryHandler {
   const binding = foundLookup(dispute)?.binding;
   const { chainId } = dispute;
   return useCallback(
-    () => Promise.all([binding === undefined ? undefined : client.invalidateQueries({ queryKey: queryKeys.family(chainId, binding.arbitrated) }), refresh("appeal")]),
+    () => Promise.all([binding === undefined ? undefined : client.invalidateQueries({ queryKey: queryKeys.family(chainId, binding.arbitrated) }), refresh("appeal", ["details"])]),
     [binding, chainId, client, refresh],
   );
 }
@@ -170,7 +170,7 @@ function useEvidenceRetry(dispute: CaseDispute): RetryHandler {
 /** The `AppealDecision` events belong to the dispute details, which are only exposed through the "appeal" refresh. */
 function AppealMarkersUnavailable({ dispute, error }: { readonly dispute: CaseDispute; readonly error: Unavailable }) {
   const refresh = useCaseRefresh(dispute.chainId, dispute.disputeId);
-  const retry = useCallback(() => refresh("appeal"), [refresh]);
+  const retry = useCallback(() => refresh("appeal", ["details"]), [refresh]);
   return <SectionUnavailable section="Appeal markers" error={error} onRetry={retry} />;
 }
 
