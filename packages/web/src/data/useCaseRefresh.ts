@@ -1,28 +1,30 @@
-import { useQueryClient, type QueryKey } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 import { disputeKeyPrefix, queryKeys } from "./queryKeys";
 import type { RefreshScope } from "./types";
 
-type RefreshedKind = Parameters<typeof disputeKeyPrefix>[0];
+type RefreshedRead = Parameters<typeof disputeKeyPrefix>[0] | "chainTime";
 
 /** `appeal` refreshes what the panel and the decision derive from, and the chain time their deadlines count down from. */
-const REFRESHED: Readonly<Record<RefreshScope, readonly RefreshedKind[]>> = {
+const REFRESHED: Readonly<Record<RefreshScope, readonly RefreshedRead[]>> = {
   evidence: ["lookup", "evidence"],
-  appeal: ["lookup", "details", "evidence", "funding", "executedRuling", "productFunding"],
+  appeal: ["lookup", "details", "evidence", "funding", "executedRuling", "productFunding", "chainTime"],
   withdraw: ["withdrawable"],
 };
 
 /**
- * For the write flow's `onMined`: call it only once the receipt is mined, never on submission. Resolves when the
- * refreshed sections have been read again.
+ * For the write flow's `onMined`: call it only once the receipt is mined, never on submission. Reads the whole scope
+ * again and resolves when the reads in `waitFor` have been read again, every read of the scope when it is omitted.
  */
-export function useCaseRefresh(chainId: number, disputeId: bigint): (scope: RefreshScope) => Promise<void> {
+export function useCaseRefresh(chainId: number, disputeId: bigint): (scope: RefreshScope, waitFor?: readonly RefreshedRead[]) => Promise<void> {
   const client = useQueryClient();
   return useCallback(
-    async (scope: RefreshScope) => {
-      const keys: QueryKey[] = REFRESHED[scope].map((kind) => disputeKeyPrefix(kind, chainId, disputeId));
-      if (scope === "appeal") keys.push(queryKeys.chainTime(chainId));
-      await Promise.all(keys.map((queryKey) => client.invalidateQueries({ queryKey })));
+    async (scope: RefreshScope, waitFor?: readonly RefreshedRead[]) => {
+      const reads = REFRESHED[scope].map((read) => ({
+        read,
+        done: client.invalidateQueries({ queryKey: read === "chainTime" ? queryKeys.chainTime(chainId) : disputeKeyPrefix(read, chainId, disputeId) }),
+      }));
+      await Promise.all(reads.filter(({ read }) => waitFor?.includes(read) ?? true).map(({ done }) => done));
     },
     [client, chainId, disputeId],
   );

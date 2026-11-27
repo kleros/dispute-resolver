@@ -77,7 +77,7 @@ function renderWithData(ui: ReactElement, deps: CoreDeps = createTestDeps()) {
   return { ...result, client };
 }
 
-const DISPLAY_RETRY = { key: "display", onRetry: () => undefined };
+const DISPLAY_RETRY = { key: "display", onRetry: () => Promise.resolve() };
 
 function renderSummary(dispute: CaseDispute, deps?: CoreDeps) {
   return renderWithData(<DisputeSummary dispute={dispute} chain={MAINNET} displayRetry={DISPLAY_RETRY} />, deps);

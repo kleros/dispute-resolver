@@ -10,6 +10,7 @@ import type {
   MetaEvidenceResult,
   Outcome,
   Period,
+  RoundFunding,
   Timeline,
 } from "@dispute-resolver/core";
 import { act, screen, waitFor, within } from "@testing-library/react";
@@ -615,6 +616,30 @@ describe("case page states", () => {
     expect(core.lookupDispute).toHaveBeenCalledTimes(2);
   });
 
+  it("the page's Retry stays busy until the lookup it started settles, then is idle again while the lookup still fails", async () => {
+    const unavailable: DisputeLookup = { status: "unavailable", error: { code: "rpc-error", message: "The arbitrator did not answer." } };
+    vi.mocked(core.lookupDispute).mockResolvedValueOnce(unavailable);
+    renderCase("/1/cases/1");
+    const retry = await screen.findByRole("button", { name: "Retry loading dispute 1" });
+    const lookup = deferred<DisputeLookup>();
+    vi.mocked(core.lookupDispute).mockReturnValueOnce(lookup.promise);
+
+    await userEvent.setup().click(retry);
+
+    await waitFor(() => {
+      expect(core.lookupDispute).toHaveBeenCalledTimes(2);
+    });
+    expect(screen.getByRole("button", { name: "Retry loading dispute 1" })).toHaveAttribute("aria-disabled", "true");
+    expect(screen.getByRole("button", { name: "Retry loading dispute 1" }).querySelector(".button-loading")).not.toBeNull();
+    await act(async () => {
+      lookup.resolve(unavailable);
+      await lookup.promise;
+    });
+    expect(screen.getByRole("button", { name: "Retry loading dispute 1" })).not.toHaveAttribute("aria-disabled");
+    expect(screen.getByRole("button", { name: "Retry loading dispute 1" }).querySelector(".button-loading")).toBeNull();
+    expect(screen.getByText("The arbitrator did not answer.")).toBeInTheDocument();
+  });
+
   it("a lookup the arbitrator answers as unavailable shows the unavailable state, not 'does not exist'", async () => {
     programReads({ lookups: { "1": { status: "unavailable", error: { code: "rpc-error", message: "The arbitrator did not answer." } } } });
     renderCase("/1/cases/1");
@@ -1169,6 +1194,57 @@ describe("section Retry", () => {
       });
     }
   }
+
+  it.each([
+    { broken: "a failed read", bad: FAILED_META_EVIDENCE, throws: false },
+    { broken: "a read it could not render", bad: testOkMetaEvidence({ title: UNRENDERABLE }), throws: true },
+  ])("Retry on Dispute summary after $broken stays busy until its re-read settles, then shows the read", async ({ bad, throws }) => {
+    if (throws) expectRenderErrors();
+    metaEvidenceReads.mockResolvedValueOnce(bad);
+    renderCase("/1/cases/1");
+    expect(await screen.findByText("Dispute summary unavailable")).toBeInTheDocument();
+    const reread = deferred<MetaEvidenceResult>();
+    metaEvidenceReads.mockReturnValueOnce(reread.promise);
+
+    await pressRetry("Dispute summary");
+
+    await waitFor(() => {
+      expect(metaEvidenceReads).toHaveBeenCalledTimes(2);
+    });
+    expect(screen.getByText("Dispute summary unavailable")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Retry Dispute summary" })).toHaveAttribute("aria-disabled", "true");
+    expect(screen.getByRole("button", { name: "Retry Dispute summary" }).querySelector(".button-loading")).not.toBeNull();
+    await act(async () => {
+      reread.resolve(GOOD_META_EVIDENCE);
+      await reread.promise;
+    });
+    expect(await screen.findByRole("heading", { level: 2, name: "Dispute 1 title" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Retry Dispute summary" })).toBeNull();
+  });
+
+  it("Retry on Decision after a failed current ruling is idle again once the details are read again, while the funding and evidence reads the same press started still run", async () => {
+    programReads({ period: 3 });
+    detailsReads.mockResolvedValue(detailsRead(3, 1n, { currentRuling: { ok: false, error: RPC_DOWN } }));
+    renderCase("/1/cases/1");
+    expect(await screen.findByText("Decision unavailable")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(core.readRoundFunding).toHaveBeenCalledTimes(1);
+    });
+    vi.mocked(core.readRoundFunding).mockReturnValue(deferred<Outcome<RoundFunding>>().promise);
+    vi.mocked(core.loadEvidence).mockReturnValue(deferred<Outcome<EvidenceList>>().promise);
+
+    await pressRetry("Decision");
+
+    await waitFor(() => {
+      expect(core.readRoundFunding).toHaveBeenCalledTimes(2);
+      expect(core.loadEvidence).toHaveBeenCalledTimes(2);
+    });
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Retry Decision" })).not.toHaveAttribute("aria-disabled");
+    });
+    expect(detailsReads).toHaveBeenCalledTimes(2);
+    expect(screen.getByText("Decision unavailable")).toBeInTheDocument();
+  });
 
   it("while a section's Retry reads again, the other sections keep their content", async () => {
     expectRenderErrors();

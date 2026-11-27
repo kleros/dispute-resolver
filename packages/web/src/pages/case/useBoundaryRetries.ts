@@ -2,7 +2,8 @@ import { useCallback, useMemo, useState } from "react";
 
 export interface BoundaryRetries {
   key(scope: string): string;
-  retry(scope: string, reread: () => Promise<unknown>): void;
+  /** Settles, never rejecting, once the re-read has settled and the remount is queued. */
+  retry(scope: string, reread: () => Promise<unknown>): Promise<void>;
 }
 
 /**
@@ -17,7 +18,7 @@ export function useBoundaryRetries(): BoundaryRetries {
       setAttempts((current) => new Map(current).set(scope, (current.get(scope) ?? 0) + 1));
     };
     // A re-read that rejects still remounts: the boundary then renders whatever the cache holds.
-    void reread().then(remount, remount);
+    return reread().then(remount, remount);
   }, []);
   return useMemo(() => ({ key: (scope: string) => `${scope}:${String(attempts.get(scope) ?? 0)}`, retry }), [attempts, retry]);
 }

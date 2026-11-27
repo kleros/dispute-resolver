@@ -1,5 +1,5 @@
 import * as core from "@dispute-resolver/core";
-import type { Address, DisputeEventResult, FetchResponse, Fetcher, MetaEvidenceEventResult, MetaEvidenceResult, Outcome, RoundFunding } from "@dispute-resolver/core";
+import type { Address, DisputeEventResult, EvidenceList, FetchResponse, Fetcher, MetaEvidenceEventResult, MetaEvidenceResult, Outcome, RoundFunding } from "@dispute-resolver/core";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient } from "@tanstack/react-query";
@@ -51,6 +51,13 @@ const GOVERNOR = testFamily({
   writeFamily: "governor",
   capabilities: { localId: "none", evidence: { kind: "uri-only" }, appeal: { kind: "governor" }, withdraw: { kind: "governor" } },
 });
+
+const ESCROW = testFamily({
+  family: "escrow-v1",
+  writeFamily: "escrow-v1",
+  capabilities: { localId: "disputeIDtoTransactionID", evidence: { kind: "local-id" }, appeal: { kind: "escrow-pay-cost" }, withdraw: { kind: "none" } },
+});
+const FAILED_META_EVIDENCE: MetaEvidenceResult = { status: "failed", reason: "fetch-error", error: { code: "rpc-error", message: "The meta-evidence file could not be fetched." } };
 
 /** The reads of an IDisputeResolver v2 dispute in `period`: ruling 1 leads, winner side 2 ETH, loser side 3 ETH. */
 function programReads(period: 3 | 4): void {
@@ -244,7 +251,7 @@ describe("AppealSection retry", () => {
     expect(core.loadMetaEvidence).toHaveBeenCalledTimes(1);
   });
 
-  it("'Retry the appeal fees' reads a governor's Dispute event again, which gives its session", async () => {
+  it("'Retry the appeal fees' reads a governor's Dispute event again, which gives its session, and stays busy until it is read", async () => {
     const user = userEvent.setup();
     programReads(3);
     vi.mocked(core.detectFamily).mockResolvedValue(GOVERNOR);
@@ -259,28 +266,108 @@ describe("AppealSection retry", () => {
     const { container } = await renderCase();
     const retry = await screen.findByRole("button", { name: "Retry the appeal fees" });
     expect(container).toHaveTextContent("The governor session is unknown");
+    const event = deferred<Outcome<DisputeEventResult>>();
+    vi.mocked(core.readDisputeEvent).mockReturnValueOnce(event.promise);
 
     await user.click(retry);
 
+    await waitFor(() => {
+      expect(core.readMultipliers).toHaveBeenCalledTimes(2);
+    });
+    await waitFor(() => {
+      expect(core.readDisputeDetails).toHaveBeenCalledTimes(2);
+    });
+    expect(screen.getByRole("button", { name: "Retry the appeal fees" })).toHaveAttribute("aria-disabled", "true");
+    event.resolve(FOUND_EVENT);
     expect(await findRulingsToFund()).toBeInTheDocument();
     expect(core.readDisputeEvent).toHaveBeenCalledTimes(2);
     expect(winnerCard()).toBeInTheDocument();
   });
 
-  it("Retry on an unavailable panel reads the meta-evidence again", async () => {
+  it("'Retry the appeal fees' is idle again once the fees read fails again, while the evidence read the same press started still runs", async () => {
     const user = userEvent.setup();
     programReads(3);
-    vi.mocked(core.loadMetaEvidence).mockResolvedValueOnce({
-      status: "failed",
-      reason: "fetch-error",
-      error: { code: "rpc-error", message: "The meta-evidence file could not be fetched." },
-    });
+    vi.mocked(core.readMultipliers).mockResolvedValue({ ok: false, error: RPC_DOWN });
     await renderCase();
-    const retry = await screen.findByRole("button", { name: "Retry Appeal" });
-    expect(screen.getByText("The meta-evidence file could not be fetched.")).toBeInTheDocument();
+    const retry = await screen.findByRole("button", { name: "Retry the appeal fees" });
+    vi.mocked(core.loadEvidence).mockReturnValue(deferred<Outcome<EvidenceList>>().promise);
 
     await user.click(retry);
 
+    await waitFor(() => {
+      expect(core.loadEvidence).toHaveBeenCalledTimes(2);
+    });
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Retry the appeal fees" })).not.toHaveAttribute("aria-disabled");
+    });
+    expect(core.readMultipliers).toHaveBeenCalledTimes(2);
+  });
+
+  it("on an Escrow V1 panel, 'Retry the appeal fees' is idle again once the appeal cost fails again, while the failed meta-evidence the same press reads again still loads", async () => {
+    const user = userEvent.setup();
+    programReads(3);
+    vi.mocked(core.detectFamily).mockResolvedValue(ESCROW);
+    vi.mocked(core.loadMetaEvidence).mockResolvedValue(FAILED_META_EVIDENCE);
+    vi.mocked(core.readDisputeDetails).mockImplementation((_context, found) =>
+      Promise.resolve(testDetails({ status: "found", ...found }, { appealInfo: { ok: false, error: RPC_DOWN } })),
+    );
+    await renderCase();
+    const retry = await screen.findByRole("button", { name: "Retry the appeal fees" });
+    vi.mocked(core.loadMetaEvidence).mockReturnValue(deferred<MetaEvidenceResult>().promise);
+
+    await user.click(retry);
+
+    await waitFor(() => {
+      expect(core.loadMetaEvidence).toHaveBeenCalledTimes(2);
+    });
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Retry the appeal fees" })).not.toHaveAttribute("aria-disabled");
+    });
+    expect(core.readDisputeDetails).toHaveBeenCalledTimes(2);
+  });
+
+  it("'Retry the appeal fees' after a failed funding read stays busy until the funding is read again", async () => {
+    const user = userEvent.setup();
+    programReads(3);
+    vi.mocked(core.readRoundFunding).mockResolvedValueOnce({ ok: false, error: RPC_DOWN });
+    await renderCase();
+    const retry = await screen.findByRole("button", { name: "Retry the appeal fees" });
+    const funding = deferred<Outcome<RoundFunding>>();
+    vi.mocked(core.readRoundFunding).mockReturnValueOnce(funding.promise);
+
+    await user.click(retry);
+
+    await waitFor(() => {
+      expect(core.readMultipliers).toHaveBeenCalledTimes(2);
+    });
+    await waitFor(() => {
+      expect(core.readDisputeDetails).toHaveBeenCalledTimes(2);
+    });
+    expect(screen.getByRole("button", { name: "Retry the appeal fees" })).toHaveAttribute("aria-disabled", "true");
+    funding.resolve(NO_FUNDING);
+    expect(await findRulingsToFund()).toBeInTheDocument();
+  });
+
+  it("Retry on an unavailable panel reads the meta-evidence again and stays busy until it is read", async () => {
+    const user = userEvent.setup();
+    programReads(3);
+    vi.mocked(core.loadMetaEvidence).mockResolvedValueOnce(FAILED_META_EVIDENCE);
+    await renderCase();
+    const retry = await screen.findByRole("button", { name: "Retry Appeal" });
+    expect(screen.getByText("The meta-evidence file could not be fetched.")).toBeInTheDocument();
+    const metaEvidence = deferred<MetaEvidenceResult>();
+    vi.mocked(core.loadMetaEvidence).mockReturnValueOnce(metaEvidence.promise);
+
+    await user.click(retry);
+
+    await waitFor(() => {
+      expect(core.readMultipliers).toHaveBeenCalledTimes(2);
+    });
+    await waitFor(() => {
+      expect(core.readRoundFunding).toHaveBeenCalledTimes(2);
+    });
+    expect(screen.getByRole("button", { name: "Retry Appeal" })).toHaveAttribute("aria-disabled", "true");
+    metaEvidence.resolve(testOkMetaEvidence());
     expect(await findRulingsToFund()).toBeInTheDocument();
     expect(core.loadMetaEvidence).toHaveBeenCalledTimes(2);
   });
@@ -319,6 +406,36 @@ describe("AppealSection on a governor whose dynamic script the gateway did not s
     vi.mocked(core.readRoundFunding).mockReturnValue(deferred<Outcome<RoundFunding>>().promise);
     await renderCase();
     expect(await screen.findByRole("button", { name: "Retry Appeal" })).toBeInTheDocument();
+    expect(screen.getByText(GATEWAY_FAILED)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Fund/ })).toBeNull();
+  });
+
+  it("the held cards' Retry stays busy until its re-read settles, then is idle again while the gateway still fails", async () => {
+    const user = userEvent.setup();
+    programGovernor();
+    await renderCase();
+    const retry = await screen.findByRole("button", { name: "Retry Appeal" });
+    const metaEvidence = deferred<MetaEvidenceResult>();
+    vi.mocked(core.loadMetaEvidence).mockReturnValueOnce(metaEvidence.promise);
+    const detailsReads = vi.mocked(core.readDisputeDetails).mock.calls.length;
+
+    await user.click(retry);
+
+    await waitFor(() => {
+      expect(core.loadMetaEvidence).toHaveBeenCalledTimes(2);
+    });
+    // The appeal reads the same press started answer at once; only the meta-evidence is held.
+    await waitFor(() => {
+      expect(vi.mocked(core.readDisputeDetails).mock.calls.length).toBeGreaterThan(detailsReads);
+    });
+    expect(screen.getByRole("button", { name: "Retry Appeal" })).toHaveAttribute("aria-disabled", "true");
+    expect(screen.getByRole("button", { name: "Retry Appeal" })).toHaveFocus();
+    expect(screen.getByRole("button", { name: "Retry Appeal" }).querySelector(".button-loading")).not.toBeNull();
+    metaEvidence.resolve(SCRIPT_NOT_SERVED);
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Retry Appeal" })).not.toHaveAttribute("aria-disabled");
+    });
+    expect(screen.getByRole("button", { name: "Retry Appeal" }).querySelector(".button-loading")).toBeNull();
     expect(screen.getByText(GATEWAY_FAILED)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^Fund/ })).toBeNull();
   });

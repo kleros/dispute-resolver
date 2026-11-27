@@ -47,9 +47,7 @@ export function DecisionAlert({ dispute }: CaseSectionProps) {
   if (existingView(dispute) === null) return null;
   const period = foundLookup(dispute)?.dispute.period;
   const decided = period === 3 || period === 4;
-  const retry = () => {
-    void refresh("appeal");
-  };
+  const retry = () => refresh("appeal", ["details"]);
   return (
     <SectionContent data={dispute.decision} section="Decision" loading={decided ? <SectionSkeleton variant="card" lines={1} /> : null} onRetry={retry}>
       {(decision, reveal) => <DecisionPanel decision={decision} className={reveal} />}

@@ -53,8 +53,9 @@ function DisputeItem({ chainId, dispute, courts, visible }: DisputeItemProps) {
   const [attempt, setAttempt] = useState(0);
   const section = `Dispute ${dispute.id.toString()}`;
   const retry = () => {
-    void queryClient.resetQueries({ queryKey: queryKeys.metaEvidence(chainId, dispute.id, dispute.arbitrated) });
+    const reread = queryClient.resetQueries({ queryKey: queryKeys.metaEvidence(chainId, dispute.id, dispute.arbitrated) });
     setAttempt((count) => count + 1);
+    return reread;
   };
   return (
     <li hidden={!visible} className="min-w-0">

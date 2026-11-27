@@ -1,7 +1,6 @@
 import { isExecuted, type AppealPanel, type ChainConfig, type Decision, type FundingTerms, type UnavailableCode } from "@dispute-resolver/core";
-import { Button } from "@kleros/ui-components-library";
 import { foundLookup, useCannotReceivePayout, type CaseSectionProps, type CaseWriteContext, type SectionData } from "../../data";
-import { Notice, SectionSkeleton, SectionUnavailable, useNowSeconds } from "../../ui";
+import { Notice, RetryButton, SectionSkeleton, SectionUnavailable, useNowSeconds, type RetryHandler } from "../../ui";
 import { PayoutWarningNotice, useWallet } from "../../wallet";
 import {
   ESCROW_ENDED,
@@ -51,7 +50,7 @@ interface PanelBodyProps {
   readonly panel: AppealPanel;
   readonly actions: AppealActions;
   readonly chain: ChainConfig;
-  readonly onRetry: () => void;
+  readonly onRetry: RetryHandler;
   readonly currentTitle: string | undefined;
   readonly executed: boolean;
 }
@@ -77,7 +76,7 @@ function PanelBody({ panel, actions, chain, onRetry, currentTitle, executed }: P
       return (
         <div className="flex flex-col items-start gap-3">
           <Notice variant="warning" title={FEES_UNAVAILABLE_TITLE} body={`${FEES_UNAVAILABLE_BODY}\n\nReason: ${panel.error.message}`} className="w-full" />
-          {RETRYABLE.has(panel.error.code) ? <Button text="Retry" aria-label="Retry the appeal fees" variant="secondary" small onPress={onRetry} /> : null}
+          {RETRYABLE.has(panel.error.code) ? <RetryButton label="Retry the appeal fees" onRetry={onRetry} small /> : null}
         </div>
       );
     case "withdraw":

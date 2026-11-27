@@ -9,7 +9,7 @@ const MAINNET = testChain(1);
 /** Dispute 1621 on mainnet as `useCase` gives it the moment its lookup starts. */
 const LOOKING_UP = testCaseDispute({ disputeId: 1621n });
 
-const NO_RETRIES = { key: (scope: string) => scope, retry: () => undefined };
+const NO_RETRIES = { key: (scope: string) => scope, retry: () => Promise.resolve() };
 
 function makesNoBox(node: Node): boolean {
   return node instanceof Element && node.classList.contains("contents") && node.childNodes.length === 0;

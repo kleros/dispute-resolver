@@ -163,10 +163,12 @@ export function caseDispute(data: CaseData): CaseDispute {
 
 export function deferred<T>() {
   let resolve: (value: T) => void = () => undefined;
-  const promise = new Promise<T>((settle) => {
-    resolve = settle;
+  let reject: (reason: Error) => void = () => undefined;
+  const promise = new Promise<T>((onResolve, onReject) => {
+    resolve = onResolve;
+    reject = onReject;
   });
-  return { promise, resolve };
+  return { promise, resolve, reject };
 }
 
 export function codeRpc(code: string): RpcHandler {

@@ -326,6 +326,7 @@ export function EvidenceTimeline({ list, request, pageState, raisedAt, appealDec
       // Retry gives way to the loading state, so focus stays in the page instead of falling to the document.
       focusPage();
       retry();
+      return Promise.resolve();
     };
     content = <SectionUnavailable section="Evidence page" error={pageState.error} onRetry={retryHere} />;
   } else if (pageState.status === "loading") content = <SectionSkeleton variant="text" lines={4} />;
