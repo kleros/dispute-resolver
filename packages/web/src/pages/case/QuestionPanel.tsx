@@ -2,7 +2,7 @@ import { optionsWithinChoices, type DisputeLookup, type MetaEvidence } from "@di
 import { useId } from "react";
 import { metaEvidenceSection, type CaseSectionProps, type SectionData } from "../../data";
 import { courtCaseUrl, ExternalLink } from "../../safe-content";
-import { LABEL, SectionSkeleton, SectionUnavailable, VotingOptionList, votingOptions, type VotingOption } from "../../ui";
+import { LABEL, SectionSkeleton, SectionUnavailable, VotingOptionList, votingOptions, type RetryHandler, type VotingOption } from "../../ui";
 import { hiddenAnswersLine, questionTypeLabel } from "./questionOptions";
 
 const SECTION = "Question";
@@ -65,7 +65,7 @@ function QuestionContent({ metaEvidence, numberOfChoices, disputeId, chainId }: 
 }
 
 interface QuestionPanelProps extends CaseSectionProps {
-  readonly onRetry?: () => void;
+  readonly onRetry?: RetryHandler;
 }
 
 export function QuestionPanel({ dispute, chain, onRetry }: QuestionPanelProps) {

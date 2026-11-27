@@ -20,9 +20,7 @@ function DisputeState({ dispute, chain, retries }: DisputeStateProps) {
   const client = useQueryClient();
   const { lookup, chainId, disputeId } = dispute;
   const id = disputeId.toString();
-  const retryLookup = () => {
-    void client.invalidateQueries({ queryKey: queryKeys.lookup(chainId, disputeId) });
-  };
+  const retryLookup = () => client.invalidateQueries({ queryKey: queryKeys.lookup(chainId, disputeId) });
   if (lookup.status === "unavailable") return <UnavailableMessage disputeId={disputeId} error={lookup.error} onRetry={retryLookup} />;
   if (lookup.status === "loading") return <DisputeSections dispute={dispute} chain={chain} retries={retries} />;
   switch (lookup.value.status) {

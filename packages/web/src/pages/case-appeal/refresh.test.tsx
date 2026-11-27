@@ -323,6 +323,36 @@ describe("AppealSection on a governor whose dynamic script the gateway did not s
     expect(screen.queryByRole("button", { name: /^Fund/ })).toBeNull();
   });
 
+  it("the held cards' Retry stays busy until its re-read settles, then is idle again while the gateway still fails", async () => {
+    const user = userEvent.setup();
+    programGovernor();
+    await renderCase();
+    const retry = await screen.findByRole("button", { name: "Retry Appeal" });
+    const metaEvidence = deferred<MetaEvidenceResult>();
+    vi.mocked(core.loadMetaEvidence).mockReturnValueOnce(metaEvidence.promise);
+    const detailsReads = vi.mocked(core.readDisputeDetails).mock.calls.length;
+
+    await user.click(retry);
+
+    await waitFor(() => {
+      expect(core.loadMetaEvidence).toHaveBeenCalledTimes(2);
+    });
+    // The appeal reads the same press started answer at once; only the meta-evidence is held.
+    await waitFor(() => {
+      expect(vi.mocked(core.readDisputeDetails).mock.calls.length).toBeGreaterThan(detailsReads);
+    });
+    expect(screen.getByRole("button", { name: "Retry Appeal" })).toHaveAttribute("aria-disabled", "true");
+    expect(screen.getByRole("button", { name: "Retry Appeal" })).toHaveFocus();
+    expect(screen.getByRole("button", { name: "Retry Appeal" }).querySelector(".button-loading")).not.toBeNull();
+    metaEvidence.resolve(SCRIPT_NOT_SERVED);
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Retry Appeal" })).not.toHaveAttribute("aria-disabled");
+    });
+    expect(screen.getByRole("button", { name: "Retry Appeal" }).querySelector(".button-loading")).toBeNull();
+    expect(screen.getByText(GATEWAY_FAILED)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Fund/ })).toBeNull();
+  });
+
   const APPEAL_READS = ["chainTime", "details", "evidence", "executedRuling", "funding", "lookup", "multipliers", "productFunding"];
   const WITH_META_EVIDENCE = ["chainTime", "details", "evidence", "executedRuling", "funding", "lookup", "metaEvidence", "multipliers", "productFunding"];
 

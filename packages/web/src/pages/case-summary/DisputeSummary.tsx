@@ -3,7 +3,7 @@ import { Card } from "@kleros/ui-components-library";
 import { useId } from "react";
 import { APP_CONFIG } from "../../env";
 import { Attachment, ExternalLink, SafeMarkdown } from "../../safe-content";
-import { EYEBROW, SectionBoundary, SectionSkeleton } from "../../ui";
+import { EYEBROW, SectionBoundary, SectionSkeleton, type RetryHandler } from "../../ui";
 import { foundLookup, metaEvidenceSection, useCoreDeps, type CaseSectionProps, type FoundLookup } from "../../data";
 import { existingView } from "./caseState";
 import { EvidenceDisplay } from "./EvidenceDisplay";
@@ -24,7 +24,7 @@ function ExternalIcon() {
 
 interface DisplayRetry {
   readonly key: string;
-  readonly onRetry: () => void;
+  readonly onRetry: RetryHandler;
 }
 
 interface SummaryCardProps {
@@ -80,7 +80,7 @@ function SummaryCard({ metaEvidence, chain, found, displayRetry, reveal }: Summa
 
 interface DisputeSummaryProps extends CaseSectionProps {
   readonly displayRetry: DisplayRetry;
-  readonly onRetry?: () => void;
+  readonly onRetry?: RetryHandler;
 }
 
 /**

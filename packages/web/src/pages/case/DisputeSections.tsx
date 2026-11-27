@@ -69,15 +69,9 @@ export function DisputeSections({ dispute, chain, retries }: DisputeSectionsProp
       refresh("evidence"),
       found === undefined ? undefined : client.invalidateQueries({ queryKey: queryKeys.disputeEvent(dispute.chainId, dispute.disputeId, found.binding.arbitrated) }),
     ]);
-  const retryMetaEvidence = () => {
-    void rereadMetaEvidence();
-  };
-
   const boundary = (name: string, section: string, reread: () => Promise<unknown>, children: ReactNode) => {
     const scope = `${name}:${disputeKey}`;
-    const retry = () => {
-      retries.retry(scope, reread);
-    };
+    const retry = () => retries.retry(scope, reread);
     return (
       <SectionBoundary key={retries.key(scope)} section={section} onRetry={retry}>
         {children}
@@ -88,9 +82,7 @@ export function DisputeSections({ dispute, chain, retries }: DisputeSectionsProp
   const displayScope = `evidence-display:${disputeKey}`;
   const displayRetry = {
     key: retries.key(displayScope),
-    onRetry: () => {
-      retries.retry(displayScope, rereadMetaEvidence);
-    },
+    onRetry: () => retries.retry(displayScope, rereadMetaEvidence),
   };
 
   const { view } = dispute;
@@ -100,7 +92,7 @@ export function DisputeSections({ dispute, chain, retries }: DisputeSectionsProp
     ) : null;
 
   const items: CaseAccordionItem[] = [
-    { title: "Question", body: boundary("question", "Question", rereadMetaEvidence, <QuestionPanel {...props} onRetry={retryMetaEvidence} />) },
+    { title: "Question", body: boundary("question", "Question", rereadMetaEvidence, <QuestionPanel {...props} onRetry={rereadMetaEvidence} />) },
     { title: "Evidence", body: boundary("evidence", "Evidence", rereadEvidence, <EvidenceSection {...props} />) },
   ];
   if (appealItem === true) {
@@ -120,7 +112,7 @@ export function DisputeSections({ dispute, chain, retries }: DisputeSectionsProp
       {boundary("script-details", "Script details notice", rereadMetaEvidence, <ScriptDetailsNotice {...props} />)}
       {banner}
       {boundary("decision", "Decision", rereadAppeal, <DecisionAlert {...props} />)}
-      {boundary("summary", "Dispute summary", rereadMetaEvidence, <DisputeSummary {...props} displayRetry={displayRetry} onRetry={retryMetaEvidence} />)}
+      {boundary("summary", "Dispute summary", rereadMetaEvidence, <DisputeSummary {...props} displayRetry={displayRetry} onRetry={rereadMetaEvidence} />)}
       {boundary("reality", "Reality notice", rereadMetaEvidence, <RealityNotice {...props} />)}
       {appealItem === undefined ? (
         <SectionSkeleton variant="bars" lines={3} />

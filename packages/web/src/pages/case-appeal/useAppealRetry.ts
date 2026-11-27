@@ -1,6 +1,7 @@
 import { useQueryClient, type QueryKey } from "@tanstack/react-query";
 import { useCallback } from "react";
 import { foundLookup, queryKeys, useCaseRefresh, type CaseDispute } from "../../data";
+import type { RetryHandler } from "../../ui";
 
 /**
  * The "appeal" refresh does not cover the multipliers, which keep a failed read as their data under a key of their
@@ -9,7 +10,7 @@ import { foundLookup, queryKeys, useCaseRefresh, type CaseDispute } from "../../
  * or a meta-evidence fetch that succeeded; a meta-evidence whose script the gateway did not serve is read again while
  * the cards wait for its titles.
  */
-export function useAppealRetry(dispute: CaseDispute): () => void {
+export function useAppealRetry(dispute: CaseDispute): RetryHandler {
   const client = useQueryClient();
   const refresh = useCaseRefresh(dispute.chainId, dispute.disputeId);
   const { chainId, disputeId, family, metaEvidence, disputeEvent, appealHold } = dispute;
@@ -19,12 +20,12 @@ export function useAppealRetry(dispute: CaseDispute): () => void {
   const eventFound = disputeEvent.status === "ready" && disputeEvent.value.status === "found";
 
   return useCallback(() => {
-    void refresh("appeal");
-    if (arbitrable === undefined) return;
+    const appeal = refresh("appeal");
+    if (arbitrable === undefined) return appeal;
     const keys: QueryKey[] = [queryKeys.multipliers(chainId, arbitrable)];
     if (!familyLoaded) keys.push(queryKeys.family(chainId, arbitrable));
     if (!metaEvidenceLoaded) keys.push(queryKeys.metaEvidence(chainId, disputeId, arbitrable));
     if (!eventFound) keys.push(queryKeys.disputeEvent(chainId, disputeId, arbitrable));
-    for (const queryKey of keys) void client.invalidateQueries({ queryKey });
+    return Promise.all([appeal, ...keys.map((queryKey) => client.invalidateQueries({ queryKey }))]);
   }, [arbitrable, chainId, client, disputeId, eventFound, familyLoaded, metaEvidenceLoaded, refresh]);
 }

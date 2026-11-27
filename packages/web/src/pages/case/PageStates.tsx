@@ -1,8 +1,7 @@
 import type { Unavailable } from "@dispute-resolver/core";
-import { Button } from "@kleros/ui-components-library";
 import { Link } from "react-router";
 import { paths } from "../../routing";
-import { ACTION_LINK_CLASS, PageMessage, RECORD_BAND, SectionSkeleton } from "../../ui";
+import { ACTION_LINK_CLASS, PageMessage, RECORD_BAND, RetryButton, SectionSkeleton, type RetryHandler } from "../../ui";
 import { PendingOverview } from "../case-summary";
 
 /** `id` is untrusted URL text: shown as text only, never put in a URL or an attribute. */
@@ -39,7 +38,7 @@ export function NoArbitratorMessage({ chainId, chainName, id }: NoArbitratorMess
 interface UnavailableMessageProps {
   readonly disputeId: bigint;
   readonly error: Unavailable;
-  readonly onRetry: () => void;
+  readonly onRetry: RetryHandler;
 }
 
 /** The lookup failed in transport: the dispute may exist, so it is not reported as missing. */
@@ -49,7 +48,7 @@ export function UnavailableMessage({ disputeId, error, onRetry }: UnavailableMes
       compact
       title={`Dispute #${disputeId.toString()} could not be loaded`}
       body={error.message}
-      action={<Button text="Retry" aria-label={`Retry loading dispute ${disputeId.toString()}`} variant="secondary" onPress={onRetry} />}
+      action={<RetryButton label={`Retry loading dispute ${disputeId.toString()}`} onRetry={onRetry} />}
     />
   );
 }

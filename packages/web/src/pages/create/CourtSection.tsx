@@ -38,15 +38,7 @@ function CourtSelect({
   const courts = useCourts(chainId);
   const queryClient = useQueryClient();
   if (courts.status === "unavailable") {
-    return (
-      <SectionUnavailable
-        section="Courts"
-        error={courts.error}
-        onRetry={() => {
-          void queryClient.invalidateQueries({ queryKey: queryKeys.courts(chainId) });
-        }}
-      />
-    );
+    return <SectionUnavailable section="Courts" error={courts.error} onRetry={() => queryClient.invalidateQueries({ queryKey: queryKeys.courts(chainId) })} />;
   }
   const list = courts.status === "ready" ? courts.value : [];
   const items = list.map((court) => ({ id: court.id.toString(), text: courtLabel(court) }));

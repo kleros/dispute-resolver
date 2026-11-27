@@ -1,12 +1,12 @@
 import type { ReactNode } from "react";
-import { SectionUnavailable, useRevealIn } from "../../ui";
+import { SectionUnavailable, useRevealIn, type RetryHandler } from "../../ui";
 import type { SectionData } from "../../data";
 
 interface SectionContentProps<T> {
   readonly data: SectionData<T>;
   readonly section: string;
   readonly loading: ReactNode;
-  readonly onRetry?: () => void;
+  readonly onRetry?: RetryHandler;
   /** The content, and the class that reveals it when it replaces the placeholder during this mount. */
   readonly children: (value: T, reveal: string | undefined) => ReactNode;
 }

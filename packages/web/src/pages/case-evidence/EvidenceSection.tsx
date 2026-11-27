@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState, type ReactNode } from "react";
 import { useAtlasUpload } from "../../atlas";
 import { foundLookup, queryKeys, useCaseRefresh, useEvidenceEntryRetry, useEvidencePage, type CaseDispute, type CaseSectionProps, type CaseWriteContext } from "../../data";
-import { SectionSkeleton, SectionUnavailable } from "../../ui";
+import { SectionSkeleton, SectionUnavailable, type RetryHandler } from "../../ui";
 import { EvidenceOrderSelect, ORDER_LABELS } from "./EvidenceOrderSelect";
 import { EvidenceTimeline, type Announcement } from "./EvidenceTimeline";
 import { SubmissionFeedbackNotice } from "./SubmissionFeedbackNotice";
@@ -106,15 +106,15 @@ function SubmitEvidence({ context, chainId, disputeId, layout }: SubmitEvidenceP
  * The dispute details are only exposed through the "appeal" refresh, which also reads the lookup, the evidence and the
  * funding again.
  */
-function useWriteContextRetry(dispute: CaseDispute): () => void {
+function useWriteContextRetry(dispute: CaseDispute): RetryHandler {
   const client = useQueryClient();
   const refresh = useCaseRefresh(dispute.chainId, dispute.disputeId);
   const binding = foundLookup(dispute)?.binding;
   const { chainId } = dispute;
-  return useCallback(() => {
-    if (binding !== undefined) void client.invalidateQueries({ queryKey: queryKeys.family(chainId, binding.arbitrated) });
-    void refresh("appeal");
-  }, [binding, chainId, client, refresh]);
+  return useCallback(
+    () => Promise.all([binding === undefined ? undefined : client.invalidateQueries({ queryKey: queryKeys.family(chainId, binding.arbitrated) }), refresh("appeal")]),
+    [binding, chainId, client, refresh],
+  );
 }
 
 function SubmitUnavailable({ dispute, error, layout }: { readonly dispute: CaseDispute; readonly error: Unavailable; readonly layout: Layout }) {
@@ -153,22 +153,24 @@ function SubmitControlView({ dispute, control, layout }: { readonly dispute: Cas
 }
 
 /** The list depends on the Dispute event too: a missing event makes it unavailable. */
-function useEvidenceRetry(dispute: CaseDispute): () => void {
+function useEvidenceRetry(dispute: CaseDispute): RetryHandler {
   const client = useQueryClient();
   const refresh = useCaseRefresh(dispute.chainId, dispute.disputeId);
   const binding = foundLookup(dispute)?.binding;
-  return useCallback(() => {
-    if (binding !== undefined) void client.invalidateQueries({ queryKey: queryKeys.disputeEvent(binding.chainId, binding.disputeId, binding.arbitrated) });
-    void refresh("evidence");
-  }, [binding, client, refresh]);
+  return useCallback(
+    () =>
+      Promise.all([
+        binding === undefined ? undefined : client.invalidateQueries({ queryKey: queryKeys.disputeEvent(binding.chainId, binding.disputeId, binding.arbitrated) }),
+        refresh("evidence"),
+      ]),
+    [binding, client, refresh],
+  );
 }
 
 /** The `AppealDecision` events belong to the dispute details, which are only exposed through the "appeal" refresh. */
 function AppealMarkersUnavailable({ dispute, error }: { readonly dispute: CaseDispute; readonly error: Unavailable }) {
   const refresh = useCaseRefresh(dispute.chainId, dispute.disputeId);
-  const retry = useCallback(() => {
-    void refresh("appeal");
-  }, [refresh]);
+  const retry = useCallback(() => refresh("appeal"), [refresh]);
   return <SectionUnavailable section="Appeal markers" error={error} onRetry={retry} />;
 }
 

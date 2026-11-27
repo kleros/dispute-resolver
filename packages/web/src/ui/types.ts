@@ -12,17 +12,31 @@ export interface NoticeProps {
   readonly reveal?: boolean;
 }
 
+/**
+ * Starts a re-read. Retry stays busy until the returned promise settles: the re-read's own promise, or a settled one
+ * when the press swaps the section for its own loading state.
+ */
+export type RetryHandler = () => Promise<unknown>;
+
 /** Give the boundary a `key` that changes with the dispute, so a failure for one dispute does not persist for the next. */
 export interface SectionBoundaryProps {
   readonly section: string;
   readonly children: ReactNode;
-  readonly onRetry?: () => void;
+  /** The boundary keeps its error, with Retry busy, until the re-read settles, then renders the section again. */
+  readonly onRetry?: RetryHandler;
 }
 
 export interface SectionUnavailableProps {
   readonly section: string;
   readonly error: Unavailable;
-  readonly onRetry?: () => void;
+  readonly onRetry?: RetryHandler;
+}
+
+export interface RetryButtonProps {
+  /** The accessible name, which the busy state would otherwise hide with the text. */
+  readonly label: string;
+  readonly onRetry: RetryHandler;
+  readonly small?: boolean;
 }
 
 export interface SectionSkeletonProps {
