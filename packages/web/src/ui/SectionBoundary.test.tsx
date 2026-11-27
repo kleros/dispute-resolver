@@ -56,19 +56,14 @@ describe("SectionBoundary", () => {
     expect(screen.queryByRole("heading", { level: 2, name: "[object Object]" })).toBeNull();
   });
 
-  it.each([
-    { name: "calls the onRetry handler", handler: true },
-    { name: "needs no onRetry handler", handler: false },
-  ])("Retry resets the boundary, renders the section again and $name", async ({ handler }) => {
-    const onRetry = vi.fn(() => Promise.resolve());
+  it("without an onRetry handler, Retry resets the boundary and renders the section again", async () => {
     render(
-      <SectionBoundary section="Summary" onRetry={handler ? onRetry : undefined}>
+      <SectionBoundary section="Summary">
         <Title title="Recovered title" />
       </SectionBoundary>,
     );
     shouldThrow = false;
-    await userEvent.setup().click(screen.getByRole("button", { name: "Retry Summary" }));
-    expect(onRetry).toHaveBeenCalledTimes(handler ? 1 : 0);
+    await userEvent.setup().click(retryButton());
     expect(screen.getByRole("heading", { name: "Recovered title" })).toBeInTheDocument();
     expect(screen.queryByText("Summary unavailable")).toBeNull();
   });
@@ -86,7 +81,7 @@ describe("SectionBoundary", () => {
         read.reject(new Error("socket hang up"));
       },
     ],
-  ] as const)("keeps the error with Retry busy until the re-read settles, and renders the section again once it %s", async (_name, settle) => {
+  ] as const)("with an onRetry handler, keeps the error with Retry busy until the re-read %s, and leaves the remount to its caller", async (_name, settle) => {
     const read = deferred<undefined>();
     render(
       <SectionBoundary section="Summary" onRetry={() => read.promise}>
@@ -105,26 +100,8 @@ describe("SectionBoundary", () => {
       settle(read);
       await read.promise.catch(() => undefined);
     });
-    expect(screen.getByRole("heading", { name: "Recovered title" })).toBeInTheDocument();
-    expect(screen.queryByText("Summary unavailable")).toBeNull();
-  });
-
-  it("a re-read that leaves the section broken shows the error again with an idle Retry", async () => {
-    const read = deferred<undefined>();
-    render(
-      <SectionBoundary section="Summary" onRetry={() => read.promise}>
-        <Title title="Still broken" />
-      </SectionBoundary>,
-    );
-    await userEvent.setup().click(retryButton());
-    expect(retryButton()).toHaveAttribute("aria-disabled", "true");
-
-    await act(async () => {
-      read.resolve(undefined);
-      await read.promise;
-    });
-
     expect(screen.getByText("Summary unavailable")).toBeInTheDocument();
     expect(retryButton()).not.toHaveAttribute("aria-disabled");
+    expect(retryButton().querySelector(".button-loading")).toBeNull();
   });
 });

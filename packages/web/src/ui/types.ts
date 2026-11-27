@@ -22,7 +22,7 @@ export type RetryHandler = () => Promise<unknown>;
 export interface SectionBoundaryProps {
   readonly section: string;
   readonly children: ReactNode;
-  /** The boundary keeps its error, with Retry busy, until the re-read settles, then renders the section again. */
+  /** The boundary keeps its error, with Retry busy, until the returned promise settles; the caller owns the remount (a new `key`). */
   readonly onRetry?: RetryHandler;
 }
 

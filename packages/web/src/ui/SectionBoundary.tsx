@@ -20,19 +20,13 @@ export class SectionBoundary extends Component<SectionBoundaryProps, SectionBoun
     return { failed: true };
   }
 
-  private readonly reset = () => {
-    this.setState({ failed: false });
-  };
-
-  // Resetting before the re-read settles would render the section on the read that broke it, which throws again and
-  // remounts the error with an idle Retry.
-  private readonly retry = (): Promise<void> => {
+  // With a handler the boundary never resets itself: its caller remounts it with a new key, once the re-read settles or
+  // at the press. Resetting at the press here would render the section on the read that broke it.
+  private readonly retry = (): Promise<unknown> => {
     const reread = this.props.onRetry?.();
-    if (reread === undefined) {
-      this.reset();
-      return Promise.resolve();
-    }
-    return reread.then(this.reset, this.reset);
+    if (reread !== undefined) return reread;
+    this.setState({ failed: false });
+    return Promise.resolve();
   };
 
   override render() {
