@@ -15,22 +15,13 @@ interface SectionBoundaryState {
 
 export class SectionBoundary extends Component<SectionBoundaryProps, SectionBoundaryState> {
   override state: SectionBoundaryState = { failed: false };
-  private mounted = false;
 
   static getDerivedStateFromError(): SectionBoundaryState {
     return { failed: true };
   }
 
-  override componentDidMount() {
-    this.mounted = true;
-  }
-
-  override componentWillUnmount() {
-    this.mounted = false;
-  }
-
   private readonly reset = () => {
-    if (this.mounted) this.setState({ failed: false });
+    this.setState({ failed: false });
   };
 
   // Resetting before the re-read settles would render the section on the read that broke it, which throws again and

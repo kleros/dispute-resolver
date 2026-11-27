@@ -127,36 +127,4 @@ describe("SectionBoundary", () => {
     expect(screen.getByText("Summary unavailable")).toBeInTheDocument();
     expect(retryButton()).not.toHaveAttribute("aria-disabled");
   });
-
-  it.each([
-    [
-      "resolves",
-      (read: Held) => {
-        read.resolve(undefined);
-      },
-    ],
-    [
-      "rejects",
-      (read: Held) => {
-        read.reject(new Error("socket hang up"));
-      },
-    ],
-  ] as const)("unmounted while its re-read is pending, updates no state when the re-read later %s", async (_name, settle) => {
-    const read = deferred<undefined>();
-    const { unmount } = render(
-      <SectionBoundary section="Summary" onRetry={() => read.promise}>
-        <Title title="Recovered title" />
-      </SectionBoundary>,
-    );
-    await userEvent.setup().click(retryButton());
-    const setState = vi.spyOn(SectionBoundary.prototype, "setState");
-
-    unmount();
-    await act(async () => {
-      settle(read);
-      await read.promise.catch(() => undefined);
-    });
-
-    expect(setState).not.toHaveBeenCalled();
-  });
 });

@@ -51,7 +51,6 @@ const TEST_DOUBLE_TEXTS = [
   "Unexpected line in the headers file",
   "The upload did not start.",
   "Second paragraph with a soft",
-  "countingSetters was handed a module without useState.",
 ];
 
 /** Texts the doubles use as whole string literals; only a literal holding exactly the text counts. */

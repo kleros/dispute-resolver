@@ -1,7 +1,6 @@
 import { Button } from "@kleros/ui-components-library";
 import { useRef, useState } from "react";
 import type { RetryButtonProps } from "./types";
-import { useMounted } from "./useMounted";
 
 /**
  * Busy from the press until the re-read settles, resolved or rejected. `isPending` blocks presses but, unlike
@@ -10,7 +9,6 @@ import { useMounted } from "./useMounted";
 export function RetryButton({ label, onRetry, small = false }: RetryButtonProps) {
   const [busy, setBusy] = useState(false);
   const pending = useRef(false);
-  const mounted = useMounted();
   const press = () => {
     // A second press can land before the busy render does.
     if (pending.current) return;
@@ -18,7 +16,7 @@ export function RetryButton({ label, onRetry, small = false }: RetryButtonProps)
     setBusy(true);
     const settle = () => {
       pending.current = false;
-      if (mounted.current) setBusy(false);
+      setBusy(false);
     };
     void onRetry().then(settle, settle);
   };

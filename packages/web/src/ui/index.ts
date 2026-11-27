@@ -24,7 +24,6 @@ export { formatDuration } from "./duration";
 export { ChainClockProvider, useChainNow, useNowSeconds } from "./clock";
 export { Timestamp, utcText } from "./Timestamp";
 export { LG_MEDIA_QUERY, PHONE_MEDIA_QUERY, useMediaQuery, XL_MEDIA_QUERY } from "./useMediaQuery";
-export { useMounted } from "./useMounted";
 export { useOutsidePress } from "./outsidePress";
 export { hasVisibleText } from "./visibleText";
 export { VotingOptionList } from "./VotingOptionList";

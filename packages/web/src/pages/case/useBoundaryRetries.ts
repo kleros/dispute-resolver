@@ -1,5 +1,4 @@
 import { useCallback, useMemo, useState } from "react";
-import { useMounted } from "../../ui";
 
 export interface BoundaryRetries {
   key(scope: string): string;
@@ -14,16 +13,12 @@ export interface BoundaryRetries {
  */
 export function useBoundaryRetries(): BoundaryRetries {
   const [attempts, setAttempts] = useState<ReadonlyMap<string, number>>(() => new Map());
-  const mounted = useMounted();
-  const retry = useCallback(
-    (scope: string, reread: () => Promise<unknown>) => {
-      const remount = () => {
-        if (mounted.current) setAttempts((current) => new Map(current).set(scope, (current.get(scope) ?? 0) + 1));
-      };
-      // A re-read that rejects still remounts: the boundary then renders whatever the cache holds.
-      return reread().then(remount, remount);
-    },
-    [mounted],
-  );
+  const retry = useCallback((scope: string, reread: () => Promise<unknown>) => {
+    const remount = () => {
+      setAttempts((current) => new Map(current).set(scope, (current.get(scope) ?? 0) + 1));
+    };
+    // A re-read that rejects still remounts: the boundary then renders whatever the cache holds.
+    return reread().then(remount, remount);
+  }, []);
   return useMemo(() => ({ key: (scope: string) => `${scope}:${String(attempts.get(scope) ?? 0)}`, retry }), [attempts, retry]);
 }
